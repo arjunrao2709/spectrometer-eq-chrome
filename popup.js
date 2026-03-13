@@ -406,13 +406,18 @@ function render() {
     analyser.getByteFrequencyData(fd);
     drawBars(fd);
 
-    // VU level from average frequency-bin amplitude
-    let binSum = 0;
-    const usedBinsVu = Math.floor(fd.length * 0.75);
-    for (let i = 0; i < usedBinsVu; i++) binSum += fd[i];
-    const avgByte = binSum / usedBinsVu;
-    const dBFSavg = (avgByte / 255) * (SPEC_MAX_DB - SPEC_MIN_DB) + SPEC_MIN_DB;
-    vuTarget = Math.max(-20, Math.min(3, dBFSavg + 18));
+    // VU level from time-domain RMS.
+    // Frequency-bin averages stay near zero (most bins are silent) and always
+    // clamp to -20 VU. RMS of the actual waveform correctly reflects level.
+    const tdVu = new Uint8Array(analyser.fftSize);
+    analyser.getByteTimeDomainData(tdVu);
+    let rmsSumVu = 0;
+    for (let i = 0; i < tdVu.length; i++) {
+      const s = (tdVu[i] - 128) / 128;
+      rmsSumVu += s * s;
+    }
+    const rmsVu = Math.sqrt(rmsSumVu / tdVu.length);
+    vuTarget = Math.max(-20, Math.min(3, (rmsVu > 0 ? 20 * Math.log10(rmsVu) : -90) + 18));
   }
 
   // Ballistic smoothing: fast attack (~35% per frame), slow release (~5%)
