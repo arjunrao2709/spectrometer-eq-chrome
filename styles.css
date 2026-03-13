@@ -3,12 +3,12 @@
 
 /* ── Body ──────────────────────────────────────────────────────────────────── */
 body {
-  width: 480px;
+  width: 100%;
   background: #0a0a0f;
   color: #ccc;
   font-family: 'Segoe UI', system-ui, sans-serif;
   user-select: none;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* ── Header ────────────────────────────────────────────────────────────────── */
@@ -70,10 +70,16 @@ select:hover { border-color: #5555aa; }
 /* ── Canvas Wrap & Spectrum ────────────────────────────────────────────────── */
 .canvas-wrap {
   position: relative;
+  width: 100%;
 }
 
+/* The canvas drawing buffer stays at 480 px (set via the HTML width attribute)
+   so rendering resolution is preserved. CSS width:100% scales the display to
+   fill whatever width the side panel happens to be. */
 #canvas {
   display: block;
+  width: 100%;
+  height: auto;
 }
 
 #status {
