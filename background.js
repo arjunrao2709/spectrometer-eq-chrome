@@ -1,3 +1,10 @@
+// Open the side panel when the toolbar icon is clicked.
+// The side panel stays open while the user browses and interacts with the page,
+// unlike a popup which closes on any outside click.
+chrome.action.onClicked.addListener((tab) => {
+  chrome.sidePanel.open({ windowId: tab.windowId });
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'getStreamId') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
