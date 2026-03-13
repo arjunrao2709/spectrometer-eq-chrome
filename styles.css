@@ -3,10 +3,10 @@
 
 /* ── Body ──────────────────────────────────────────────────────────────────── */
 body {
-  width: 380px;
-  background: #111;
+  width: 480px;
+  background: #0a0a0f;
   color: #ccc;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'Segoe UI', system-ui, sans-serif;
   user-select: none;
   overflow: hidden;
 }
@@ -14,47 +14,97 @@ body {
 /* ── Header ────────────────────────────────────────────────────────────────── */
 header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 8px 14px;
-  background: #0a0a0a;
-  border-bottom: 1px solid #1e1e1e;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  background: #0a0a0f;
+  border-bottom: 1px solid #1e1e2e;
 }
 
 .title {
-  font-size: 10px;
-  letter-spacing: 3px;
-  color: #555;
-  font-weight: bold;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a0a0c0;
 }
 
-.status {
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: #444;
-  padding: 2px 8px;
-  border: 1px solid #1e1e1e;
+/* ── Header Controls (mode select + capture button) ───────────────────────── */
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
-.status.live {
-  color: #00ff88;
-  border-color: #00ff8844;
-  text-shadow: 0 0 6px #00ff88;
+select {
+  background: #16162a;
+  border: 1px solid #2e2e4e;
+  color: #a0a0c0;
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
 }
 
-/* ── Spectrum Canvas ───────────────────────────────────────────────────────── */
-#spectrum {
+select:hover { border-color: #5555aa; }
+
+#btn-capture {
+  background: #3a3a7a;
+  color: #c0c0ff;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+#btn-capture:hover         { background: #5050aa; }
+#btn-capture.active        { background: #aa3060; color: #ffd0e0; }
+#btn-capture.active:hover  { background: #cc3070; }
+
+/* ── Canvas Wrap & Spectrum ────────────────────────────────────────────────── */
+.canvas-wrap {
+  position: relative;
+}
+
+#canvas {
   display: block;
-  width: 380px;
-  height: 140px;
-  background: #050505;
 }
+
+#status {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 13px;
+  color: #555577;
+  text-align: center;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ── Info Bar ──────────────────────────────────────────────────────────────── */
+.info-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 14px;
+  font-size: 10px;
+  color: #44446a;
+  border-top: 1px solid #1e1e2e;
+}
+
+#peak-label { color: #6666aa; }
 
 /* ── EQ Section ────────────────────────────────────────────────────────────── */
 .eq-section {
-  padding: 14px 10px 10px;
-  background: #0f0f0f;
-  border-top: 1px solid #1e1e1e;
+  padding: 14px 10px 14px;
+  background: #0c0c16;
+  border-top: 1px solid #1e1e2e;
 }
 
 .eq-title {
@@ -173,60 +223,12 @@ header {
   letter-spacing: 1px;
 }
 
-/* ── Footer ────────────────────────────────────────────────────────────────── */
-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: #0a0a0a;
-  border-top: 1px solid #1e1e1e;
-  gap: 8px;
-}
-
-#file-input { display: none; }
-
-.btn-group {
-  display: flex;
-  gap: 4px;
-}
-
-/* ── Buttons ───────────────────────────────────────────────────────────────── */
-button {
-  background: #181818;
-  color: #555;
-  border: 1px solid #2e2e2e;
-  padding: 5px 12px;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 9px;
-  letter-spacing: 2px;
-  cursor: pointer;
-  outline: none;
-  transition: background 0.1s, color 0.1s;
-}
-
-button:hover:not(:disabled) {
-  background: #222;
-  color: #888;
-}
-
-button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-button.active {
-  background: #001a0e;
-  color: #00ff88;
-  border-color: #00ff8855;
-}
-
-/* ── Hint ──────────────────────────────────────────────────────────────────── */
+/* ── Hint (shown inside eq-section) ───────────────────────────────────────── */
 .hint {
-  font-size: 8px;
-  color: #2e2e2e;
+  display: block;
+  text-align: center;
+  font-size: 9px;
+  color: #2a2a3a;
   letter-spacing: 0.3px;
-  flex: 1;
-  text-align: right;
-  white-space: nowrap;
+  margin-top: 10px;
 }

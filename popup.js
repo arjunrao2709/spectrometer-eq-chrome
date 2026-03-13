@@ -1,346 +1,328 @@
 'use strict';
 
-// ─── EQ Band Definitions ──────────────────────────────────────────────────────
+// ─── EQ Band Definitions (DJ Rotary Mixer) ────────────────────────────────────
 //
-// DJ rotary mixer EQ uses three shelf/peaking filters:
-//   HIGH  – highshelf  at 3.2 kHz  (treble)
-//   MID   – peaking    at 1.0 kHz  (mids, Q=0.7 for one-octave width)
-//   LOW   – lowshelf   at 320 Hz   (bass)
+// Three biquad filters modelled on a DJ rotary mixer:
+//   HIGH  – highshelf  @ 3.2 kHz
+//   MID   – peaking    @ 1.0 kHz  (Q = 0.7, ~one-octave width)
+//   LOW   – lowshelf   @ 320 Hz
 //
-// Each knob sweeps −150° (kill / −40 dB) to +150° (boost / +6 dB).
-// The 12 o'clock position is always 0 dB (unity gain).
-// Turning below −30 dB is treated as a "kill" (displayed as KILL).
+// Knob range: −150° (kill / −40 dB) to +150° (+6 dB). 12 o'clock = 0 dB.
 //
 const BANDS = [
-  { id: 'high', label: 'HIGH', type: 'highshelf', freq: 3200, q: null, color: '#ff6633' },
-  { id: 'mid',  label: 'MID',  type: 'peaking',   freq: 1000, q: 0.7,  color: '#ffcc00' },
-  { id: 'low',  label: 'LOW',  type: 'lowshelf',  freq: 320,  q: null, color: '#3399ff' },
+  { id: 'high', type: 'highshelf', freq: 3200, q: null },
+  { id: 'mid',  type: 'peaking',   freq: 1000, q: 0.7  },
+  { id: 'low',  type: 'lowshelf',  freq: 320,  q: null },
 ];
 
-// ─── Knob Range ───────────────────────────────────────────────────────────────
-const MIN_ANGLE = -150;   // degrees, counter-clockwise extreme (kill)
-const MAX_ANGLE =  150;   // degrees, clockwise extreme (max boost)
-const MIN_DB    =  -40;   // dB at MIN_ANGLE  (functionally silent)
-const MAX_DB    =    6;   // dB at MAX_ANGLE
-const KILL_DB   =  -30;   // threshold below which we label "KILL"
+const MIN_ANGLE = -150;
+const MAX_ANGLE =  150;
+const MIN_DB    =  -40;
+const MAX_DB    =    6;
+const KILL_DB   =  -30;
 
-// ─── State ────────────────────────────────────────────────────────────────────
-let audioCtx   = null;
-let analyser   = null;
-let source     = null;    // MediaElementSource or MediaStreamSource
-let animId     = null;
-let running    = false;
-let sourceMode = null;    // 'file' | 'mic'
-let audioEl    = null;    // HTMLAudioElement (file mode only)
+// ─── DOM References ───────────────────────────────────────────────────────────
+const canvas     = document.getElementById('canvas');
+const ctx        = canvas.getContext('2d');
+const btn        = document.getElementById('btn-capture');
+const statusEl   = document.getElementById('status');
+const peakLabel  = document.getElementById('peak-label');
+const modeSelect = document.getElementById('mode-select');
 
-const filters = {};                              // band id → BiquadFilterNode
-const angles  = { high: 0, mid: 0, low: 0 };   // current knob angles (degrees)
+const W = canvas.width;
+const H = canvas.height;
 
-// Drag tracking
-let dragBand       = null;
-let dragStartY     = 0;
-let dragStartAngle = 0;
+// ─── Audio State ──────────────────────────────────────────────────────────────
+let audioCtx  = null;
+let analyser  = null;
+let animId    = null;
+let stream    = null;
+let capturing = false;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const clamp      = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-const angleToDb  = a => MIN_DB + (a - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE) * (MAX_DB - MIN_DB);
+// EQ filter nodes — populated in startCapture(), cleared in stopCapture()
+const filters = {};
+
+// Current knob positions (degrees) — preserved across start/stop cycles
+const angles = { high: 0, mid: 0, low: 0 };
+
+// ─── Spectrum: Gradients & Peaks ─────────────────────────────────────────────
+let barGradient    = null;
+let mirrorGradient = null;
+let peakValues     = null;
+let peakDecay      = null;
+
+const PEAK_HOLD_FRAMES = 30;
+const PEAK_DECAY_RATE  = 1.5;
+
+function buildGradients() {
+  barGradient = ctx.createLinearGradient(0, H, 0, 0);
+  barGradient.addColorStop(0.0, '#1a0a3a');
+  barGradient.addColorStop(0.3, '#3b1fa8');
+  barGradient.addColorStop(0.6, '#a020f0');
+  barGradient.addColorStop(0.8, '#ff2080');
+  barGradient.addColorStop(1.0, '#ff8040');
+
+  mirrorGradient = ctx.createLinearGradient(0, 0, 0, H);
+  mirrorGradient.addColorStop(0.0, '#ff8040');
+  mirrorGradient.addColorStop(0.2, '#ff2080');
+  mirrorGradient.addColorStop(0.5, '#a020f0');
+  mirrorGradient.addColorStop(1.0, '#3b1fa8');
+}
+
+buildGradients();
+
+function initPeaks(count) {
+  peakValues = new Float32Array(count);
+  peakDecay  = new Int32Array(count);
+}
+
+// ─── Spectrum: Draw Functions ─────────────────────────────────────────────────
+function drawIdle() {
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#111122';
+  ctx.lineWidth = 1;
+  for (let y = 0; y < H; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+}
+
+drawIdle();
+
+function drawBars(dataArray) {
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#111122';
+  ctx.lineWidth = 1;
+  for (let y = 0; y < H; y += 44) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  const mode     = modeSelect.value;
+  const usedBins = Math.floor(dataArray.length * 0.75);
+  const barCount = 96;
+  const gap      = 2;
+  const barW     = (W - gap) / barCount - gap;
+  let peak = 0;
+
+  for (let i = 0; i < barCount; i++) {
+    const startBin = Math.floor(Math.pow(i / barCount, 1.6) * usedBins);
+    const endBin   = Math.floor(Math.pow((i + 1) / barCount, 1.6) * usedBins);
+    let sum = 0;
+    const count = Math.max(1, endBin - startBin);
+    for (let b = startBin; b < endBin; b++) sum += dataArray[b];
+    const avg        = sum / count;
+    const normalized = avg / 255;
+    const barH       = normalized * H;
+    if (avg > peak) peak = avg;
+
+    if (normalized * H > peakValues[i]) {
+      peakValues[i] = normalized * H;
+      peakDecay[i]  = PEAK_HOLD_FRAMES;
+    } else {
+      if (peakDecay[i] > 0) peakDecay[i]--;
+      else peakValues[i] = Math.max(0, peakValues[i] - PEAK_DECAY_RATE);
+    }
+
+    const x = gap + i * (barW + gap);
+
+    if (mode === 'mirror') {
+      const halfH = H / 2;
+      ctx.fillStyle = mirrorGradient;
+      ctx.fillRect(x, halfH - barH / 2, barW, barH);
+      if (peakValues[i] > 2) {
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.fillRect(x, halfH - peakValues[i] / 2 - 1, barW, 2);
+        ctx.fillRect(x, halfH + peakValues[i] / 2 - 1, barW, 2);
+      }
+    } else {
+      ctx.fillStyle = barGradient;
+      ctx.fillRect(x, H - barH, barW, barH);
+      if (peakValues[i] > 2) {
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillRect(x, H - peakValues[i] - 1, barW, 2);
+      }
+    }
+  }
+
+  peakLabel.textContent = `Peak: ${Math.round((peak / 255) * 100)}%`;
+}
+
+function render() {
+  animId = requestAnimationFrame(render);
+  if (!analyser) return;
+
+  if (modeSelect.value === 'wave') {
+    const td = new Uint8Array(analyser.fftSize);
+    analyser.getByteTimeDomainData(td);
+    ctx.fillStyle = '#0a0a0f';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#111122';
+    ctx.lineWidth = 1;
+    for (let y = 0; y < H; y += 44) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    ctx.lineWidth   = 2;
+    ctx.strokeStyle = '#a020f0';
+    ctx.shadowColor = '#a020f0';
+    ctx.shadowBlur  = 8;
+    ctx.beginPath();
+    const sliceW = W / analyser.fftSize;
+    let x = 0;
+    for (let i = 0; i < analyser.fftSize; i++) {
+      const y = (td[i] / 128.0) * H / 2;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      x += sliceW;
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    peakLabel.textContent = 'Waveform';
+  } else {
+    const fd = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(fd);
+    drawBars(fd);
+  }
+}
+
+// ─── Tab Capture ──────────────────────────────────────────────────────────────
+async function startCapture() {
+  try {
+    statusEl.textContent = 'Requesting audio capture…';
+    const response = await chrome.runtime.sendMessage({ type: 'getStreamId' });
+    if (response.error) { statusEl.textContent = `Error: ${response.error}`; return; }
+
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { mandatory: { chromeMediaSource: 'tab', chromeMediaSourceId: response.streamId } },
+      video: false,
+    });
+
+    audioCtx = new AudioContext();
+    const tabSource = audioCtx.createMediaStreamSource(stream);
+
+    // Build the 3-band EQ filter chain, seeding each filter with the
+    // current knob position so EQ state is preserved across start/stop.
+    for (const b of BANDS) {
+      const f = audioCtx.createBiquadFilter();
+      f.type            = b.type;
+      f.frequency.value = b.freq;
+      if (b.q !== null) f.Q.value = b.q;
+      const db = angleToDb(angles[b.id]);
+      f.gain.value = db <= KILL_DB ? -40 : db;
+      filters[b.id] = f;
+    }
+
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize              = 2048;
+    analyser.smoothingTimeConstant = 0.8;
+    analyser.minDecibels          = -90;
+    analyser.maxDecibels          = -10;
+
+    // Signal chain: tab → HIGH filter → MID filter → LOW filter → analyser → speakers
+    tabSource.connect(filters.high);
+    filters.high.connect(filters.mid);
+    filters.mid.connect(filters.low);
+    filters.low.connect(analyser);
+    analyser.connect(audioCtx.destination);
+
+    initPeaks(analyser.frequencyBinCount);
+    statusEl.style.display = 'none';
+    capturing = true;
+    btn.textContent = 'Stop';
+    btn.classList.add('active');
+    render();
+  } catch (err) {
+    statusEl.textContent = `Failed: ${err.message}`;
+  }
+}
+
+function stopCapture() {
+  if (animId)   { cancelAnimationFrame(animId); animId = null; }
+  if (stream)   { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  analyser = null;
+  capturing = false;
+  Object.keys(filters).forEach(k => delete filters[k]);
+
+  btn.textContent = 'Start';
+  btn.classList.remove('active');
+  statusEl.style.display   = '';
+  statusEl.textContent     = 'Click Start to begin capturing tab audio';
+  peakLabel.textContent    = 'Peak: —';
+  drawIdle();
+}
+
+btn.addEventListener('click', () => capturing ? stopCapture() : startCapture());
+
+// ─── EQ: Helpers ──────────────────────────────────────────────────────────────
+const clamp     = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const angleToDb = a => MIN_DB + (a - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE) * (MAX_DB - MIN_DB);
 
 function formatDb(db) {
   if (db <= KILL_DB) return 'KILL';
   return (db >= 0 ? '+' : '') + db.toFixed(1) + ' dB';
 }
 
-// ─── Arc Path Calculation ─────────────────────────────────────────────────────
+// ─── EQ: SVG Arc Path ─────────────────────────────────────────────────────────
 //
-// Coordinate system used for the SVG:
-//   - SVG 0° = 3 o'clock, increases clockwise
-//   - Our knob 0° = 12 o'clock, increases clockwise
-//   - Conversion: svgDeg = knobDeg − 90
-//
-// Arc center (cx,cy) = (40,40), radius r = 34
-// Minimum position (−150°): SVG angle = −240° ≡ 120° → point (23.0, 69.44)
-// Maximum position (+150°): SVG angle =   60°          → point (57.0, 69.44)
+// Arc geometry: cx=40, cy=40, r=34 (inside the 80×80 SVG viewBox).
+// Our 0° = 12 o'clock; SVG 0° = 3 o'clock → convert: svgDeg = knobDeg − 90.
+// Track spans −150° to +150° (300° sweep, gap at the bottom).
 //
 function arcPoint(knobDeg) {
   const rad = (knobDeg - 90) * Math.PI / 180;
-  return {
-    x: 40 + 34 * Math.cos(rad),
-    y: 40 + 34 * Math.sin(rad),
-  };
+  return { x: 40 + 34 * Math.cos(rad), y: 40 + 34 * Math.sin(rad) };
 }
 
 function buildArcPath(angle) {
-  const start  = arcPoint(MIN_ANGLE);
-  const end    = arcPoint(angle);
-  const sweep  = angle - MIN_ANGLE;   // 0 … 300 degrees
+  const start = arcPoint(MIN_ANGLE);
+  const end   = arcPoint(angle);
+  const sweep = angle - MIN_ANGLE;   // 0 … 300 degrees
 
   if (sweep < 0.5) {
-    // Kill position – render nothing (move only, no arc)
+    // Kill position — no visible arc
     return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)}`;
   }
 
-  const largeArc = sweep > 180 ? 1 : 0;
+  const large = sweep > 180 ? 1 : 0;
   return (
     `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} ` +
-    `A 34 34 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`
+    `A 34 34 0 ${large} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`
   );
 }
 
-// ─── Knob Update ─────────────────────────────────────────────────────────────
+// ─── EQ: Knob Update ──────────────────────────────────────────────────────────
 function updateKnob(id, angle) {
   angles[id]   = angle;
   const db     = angleToDb(angle);
   const isKill = db <= KILL_DB;
 
-  // 1. Rotate knob body (the metal circle with pip)
+  // Rotate the metal knob body
   document.getElementById(`knob-body-${id}`).style.transform = `rotate(${angle}deg)`;
 
-  // 2. Update active arc (SVG fill path)
+  // Update the active SVG arc
   document.getElementById(`arc-fill-${id}`).setAttribute('d', buildArcPath(angle));
 
-  // 3. Update dB label
+  // Update dB readout
   const label = document.getElementById(`db-${id}`);
   label.textContent = formatDb(db);
   label.classList.toggle('kill', isKill);
 
-  // 4. Apply to Web Audio filter
+  // Apply to the live filter (if audio is running)
   if (filters[id]) {
-    // At kill the filter gain goes to −40 dB which is ~0.01 linear – effectively silent.
     filters[id].gain.value = isKill ? -40 : db;
   }
 }
 
-// ─── Audio Teardown ───────────────────────────────────────────────────────────
-function teardown() {
-  running = false;
-  if (animId)  { cancelAnimationFrame(animId); animId = null; }
-  if (source)  { source.disconnect(); source = null; }
-  if (audioEl) { audioEl.pause(); audioEl = null; }
-  if (audioCtx) { audioCtx.close(); audioCtx = null; }
-  analyser  = null;
-  sourceMode = null;
-  Object.keys(filters).forEach(k => delete filters[k]);
-
-  clearCanvas();
-  document.getElementById('status').textContent = 'OFF';
-  document.getElementById('status').classList.remove('live');
-  document.getElementById('btn-play').disabled = true;
-  document.getElementById('btn-play').textContent = 'PLAY';
-  document.getElementById('btn-play').classList.remove('active');
-  document.getElementById('btn-mic').classList.remove('active');
-}
-
-// ─── Audio Initialisation (shared) ────────────────────────────────────────────
-function createAudioGraph() {
-  audioCtx = new AudioContext();
-
-  // Build the three biquad filters
-  for (const b of BANDS) {
-    const f = audioCtx.createBiquadFilter();
-    f.type            = b.type;
-    f.frequency.value = b.freq;
-    f.gain.value      = angleToDb(angles[b.id]);  // restore current knob position
-    if (b.q !== null) f.Q.value = b.q;
-    filters[b.id] = f;
-  }
-
-  // Re-apply current knob values to filters
-  BANDS.forEach(b => {
-    if (filters[b.id]) {
-      const db = angleToDb(angles[b.id]);
-      filters[b.id].gain.value = db <= KILL_DB ? -40 : db;
-    }
-  });
-
-  // Analyser
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize              = 2048;
-  analyser.smoothingTimeConstant = 0.8;
-}
-
-// Signal chain: source → HIGH filter → MID filter → LOW filter → analyser (→ destination)
-function connectChain(connectToDestination) {
-  source.connect(filters.high);
-  filters.high.connect(filters.mid);
-  filters.mid.connect(filters.low);
-  filters.low.connect(analyser);
-  if (connectToDestination) {
-    analyser.connect(audioCtx.destination);
-  }
-}
-
-// ─── File Mode ────────────────────────────────────────────────────────────────
-function startFileMode(file) {
-  teardown();
-  createAudioGraph();
-
-  audioEl = new Audio();
-  audioEl.src  = URL.createObjectURL(file);
-  audioEl.loop = true;
-
-  source = audioCtx.createMediaElementSource(audioEl);
-  connectChain(true);   // connect to speakers so we can hear the EQ
-
-  running = true;
-  sourceMode = 'file';
-  renderSpectrum();
-
-  document.getElementById('status').textContent = 'FILE';
-  document.getElementById('status').classList.add('live');
-
-  const playBtn = document.getElementById('btn-play');
-  playBtn.disabled  = false;
-  playBtn.textContent = 'PLAY';
-  playBtn.classList.remove('active');
-}
-
-function togglePlayback() {
-  if (!audioEl) return;
-  const btn = document.getElementById('btn-play');
-  if (audioEl.paused) {
-    audioCtx.resume().then(() => audioEl.play());
-    btn.textContent = 'PAUSE';
-    btn.classList.add('active');
-  } else {
-    audioEl.pause();
-    btn.textContent = 'PLAY';
-    btn.classList.remove('active');
-  }
-}
-
-// ─── Mic Mode ─────────────────────────────────────────────────────────────────
-async function toggleMic() {
-  if (sourceMode === 'mic') {
-    teardown();
-    document.getElementById('btn-mic').classList.remove('active');
-    return;
-  }
-
-  teardown();
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    createAudioGraph();
-    source = audioCtx.createMediaStreamSource(stream);
-    connectChain(false);   // do NOT route mic to speakers (feedback!)
-
-    running = true;
-    sourceMode = 'mic';
-    renderSpectrum();
-
-    document.getElementById('status').textContent = 'MIC';
-    document.getElementById('status').classList.add('live');
-    document.getElementById('btn-mic').classList.add('active');
-  } catch (err) {
-    const label = err.name === 'NotAllowedError' ? 'MIC DENIED' : 'ERROR';
-    document.getElementById('status').textContent = label;
-  }
-}
-
-// ─── Spectrum Renderer ────────────────────────────────────────────────────────
-function clearCanvas() {
-  const canvas = document.getElementById('spectrum');
-  const ctx    = canvas.getContext('2d');
-  ctx.fillStyle = '#050505';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
-
-function renderSpectrum() {
-  if (!running || !analyser) return;
-
-  const canvas = document.getElementById('spectrum');
-  const ctx    = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-
-  const bufLen = analyser.frequencyBinCount;
-  const data   = new Uint8Array(bufLen);
-  analyser.getByteFrequencyData(data);
-
-  // Background
-  ctx.fillStyle = '#050505';
-  ctx.fillRect(0, 0, W, H);
-
-  // Subtle horizontal grid
-  ctx.strokeStyle = '#0f0f0f';
-  ctx.lineWidth   = 1;
-  for (let i = 1; i < 4; i++) {
-    const y = Math.round(i * H / 4) + 0.5;
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-  }
-
-  // Frequency bars on a logarithmic scale (20 Hz → 20 kHz)
-  const N       = 128;
-  const barW    = W / N;
-  const nyquist = audioCtx.sampleRate / 2;
-
-  for (let i = 0; i < N; i++) {
-    const t    = i / N;
-    const freq = 20 * Math.pow(1000, t);         // log scale: 20 Hz to 20 kHz
-    const bin  = Math.round(freq / nyquist * bufLen);
-    const val  = data[Math.min(bin, bufLen - 1)] / 255;
-    const bh   = val * (H - 14);                 // leave room for labels
-
-    if (bh < 1) continue;
-
-    // Colour by band
-    let color;
-    if      (freq < 320)  color = '#3399ff';     // LOW  – blue
-    else if (freq < 3200) color = '#ffcc00';     // MID  – yellow
-    else                  color = '#ff6633';     // HIGH – orange
-
-    const x    = Math.round(i * barW);
-    const barH = Math.ceil(bh);
-
-    const grad = ctx.createLinearGradient(0, H - 14 - barH, 0, H - 14);
-    grad.addColorStop(0, color);
-    grad.addColorStop(1, color + '18');
-    ctx.fillStyle = grad;
-    ctx.fillRect(x, H - 14 - barH, Math.max(1, barW - 1), barH);
-  }
-
-  // Crossover marker lines (vertical dashed) – show where LOW/MID/HIGH split
-  const crossovers = [
-    { freq: 320,  label: '320Hz' },
-    { freq: 3200, label: '3.2k'  },
-  ];
-  ctx.setLineDash([2, 4]);
-  ctx.strokeStyle = '#2a2a2a';
-  ctx.lineWidth   = 1;
-  for (const co of crossovers) {
-    const t = Math.log(co.freq / 20) / Math.log(1000);
-    const x = Math.round(t * W) + 0.5;
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H - 14); ctx.stroke();
-  }
-  ctx.setLineDash([]);
-
-  // Frequency axis labels
-  const freqLabels = [
-    [20, '20'],
-    [100, '100'],
-    [320, '320'],
-    [1000, '1k'],
-    [3200, '3.2k'],
-    [10000, '10k'],
-    [20000, '20k'],
-  ];
-  ctx.fillStyle  = '#2e2e2e';
-  ctx.font       = '8px monospace';
-  ctx.textAlign  = 'center';
-  for (const [freq, lbl] of freqLabels) {
-    const t = Math.log(freq / 20) / Math.log(1000);
-    ctx.fillText(lbl, t * W, H - 3);
-  }
-
-  animId = requestAnimationFrame(renderSpectrum);
-}
-
-// ─── Drag Interaction ─────────────────────────────────────────────────────────
+// ─── EQ: Drag & Wheel Interaction ─────────────────────────────────────────────
 //
-// Vertical drag on a .knob-wrap controls the rotary position:
-//   drag up   → clockwise  → boost
-//   drag down → counter-clockwise → cut / kill
+// Drag vertically on a knob:  up → boost,  down → cut / kill.
+// Sensitivity: 0.8 degrees per pixel.
+// Double-click resets the band to 0 dB (unity).
 //
-// Sensitivity: 0.8 degrees per pixel of vertical movement.
-//
+let dragBand       = null;
+let dragStartY     = 0;
+let dragStartAngle = 0;
+
 document.querySelectorAll('.knob-wrap').forEach(wrap => {
   const band = wrap.dataset.band;
 
@@ -351,12 +333,10 @@ document.querySelectorAll('.knob-wrap').forEach(wrap => {
     e.preventDefault();
   });
 
-  // Double-click → reset to 0 dB
   wrap.addEventListener('dblclick', () => updateKnob(band, 0));
 
-  // Mouse wheel for fine control
   wrap.addEventListener('wheel', e => {
-    const delta = -e.deltaY * 0.5;          // scale scroll speed to degrees
+    const delta = -e.deltaY * 0.5;
     updateKnob(band, clamp(angles[band] + delta, MIN_ANGLE, MAX_ANGLE));
     e.preventDefault();
   }, { passive: false });
@@ -364,29 +344,12 @@ document.querySelectorAll('.knob-wrap').forEach(wrap => {
 
 document.addEventListener('mousemove', e => {
   if (!dragBand) return;
-  const delta    = (dragStartY - e.clientY) * 0.8;
-  const newAngle = clamp(dragStartAngle + delta, MIN_ANGLE, MAX_ANGLE);
-  updateKnob(dragBand, newAngle);
+  const delta = (dragStartY - e.clientY) * 0.8;
+  updateKnob(dragBand, clamp(dragStartAngle + delta, MIN_ANGLE, MAX_ANGLE));
 });
 
 document.addEventListener('mouseup', () => { dragBand = null; });
 
-// ─── Button Wiring ────────────────────────────────────────────────────────────
-document.getElementById('btn-file').addEventListener('click', () => {
-  document.getElementById('file-input').click();
-});
-
-document.getElementById('file-input').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (file) startFileMode(file);
-  e.target.value = ''; // allow re-selecting the same file
-});
-
-document.getElementById('btn-mic').addEventListener('click', toggleMic);
-
-document.getElementById('btn-play').addEventListener('click', togglePlayback);
-
-// ─── Initialise Knobs ─────────────────────────────────────────────────────────
-// Set every knob to 0 dB (12 o'clock) on load and render the initial arc state.
+// ─── Init ─────────────────────────────────────────────────────────────────────
+// Render knobs at 0 dB (12 o'clock) on load.
 BANDS.forEach(b => updateKnob(b.id, 0));
-clearCanvas();
