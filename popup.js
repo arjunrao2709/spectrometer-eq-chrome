@@ -24,13 +24,17 @@ const KILL_DB   =  -30;
 // ─── DOM References ───────────────────────────────────────────────────────────
 const canvas     = document.getElementById('canvas');
 const ctx        = canvas.getContext('2d');
+const vuCanvas   = document.getElementById('vu-canvas');
+const vuCtx      = vuCanvas.getContext('2d');
 const btn        = document.getElementById('btn-capture');
 const statusEl   = document.getElementById('status');
 const peakLabel  = document.getElementById('peak-label');
 const modeSelect = document.getElementById('mode-select');
 
-const W = canvas.width;
-const H = canvas.height;
+const W  = canvas.width;
+const H  = canvas.height;
+const VW = vuCanvas.width;   // 480
+const VH = vuCanvas.height;  // 140
 
 // ─── Audio State ──────────────────────────────────────────────────────────────
 let audioCtx  = null;
@@ -71,6 +75,179 @@ function buildGradients() {
 }
 
 buildGradients();
+
+// ─── VU Meter ─────────────────────────────────────────────────────────────────
+//
+// Classic analog VU meter with ballistic needle.
+// Scale: -20 VU to +3 VU  (0 VU ≈ -18 dBFS for digital audio)
+// Zones: green (-20→0), amber (0→+2), red (+2→+3)
+//
+
+const VU_CX  = VW / 2;   // needle pivot — horizontal centre
+const VU_CY  = VH - 12;  // needle pivot — near bottom of canvas
+const VU_R   = 108;       // scale arc radius
+const VU_AW  = 14;        // arc band stroke width
+
+// Map VU value to angle (degrees from 12 o'clock, + = CW).
+// Two-segment: -20→0 VU spans 100°; 0→+3 VU spans 30°.
+function vuAngleDeg(vu) {
+  return vu <= 0 ? -65 + (vu + 20) * 5 : 35 + vu * 10;
+}
+function vuAngleRad(vu) {
+  return (vuAngleDeg(vu) - 90) * Math.PI / 180;
+}
+
+let vuCurrent  = -20;   // currently displayed VU level (animated)
+let vuTarget   = -20;   // target level set each render frame
+let vuFaceData = null;  // cached ImageData of the static meter face
+
+const VU_MARKS = [
+  { vu: -20, label: '-20', major: true  },
+  { vu: -10, label: '-10', major: true  },
+  { vu:  -7, label: '-7',  major: false },
+  { vu:  -5, label: '-5',  major: true  },
+  { vu:  -3, label: '-3',  major: false },
+  { vu:  -2, label: '-2',  major: false },
+  { vu:  -1, label: '',    major: false },
+  { vu:   0, label: '0',   major: true  },
+  { vu:  +1, label: '',    major: false },
+  { vu:  +2, label: '+2',  major: false },
+  { vu:  +3, label: '+3',  major: true  },
+];
+
+function drawVuFace() {
+  const c = vuCtx;
+
+  // Outer walnut frame
+  c.fillStyle = '#2a1204';
+  c.fillRect(0, 0, VW, VH);
+
+  // Cream meter card
+  const MX = 22, MY = 6, MW = VW - 44, MH = VH - 20;
+  c.fillStyle = '#f0ebdf';
+  c.beginPath(); c.roundRect(MX, MY, MW, MH, 3); c.fill();
+
+  // Coloured scale arc bands
+  c.lineCap   = 'butt';
+  c.lineWidth = VU_AW;
+
+  c.strokeStyle = '#1e8814';   // green: -20 → 0 VU
+  c.beginPath();
+  c.arc(VU_CX, VU_CY, VU_R, vuAngleRad(-20), vuAngleRad(0), false);
+  c.stroke();
+
+  c.strokeStyle = '#c88a00';   // amber: 0 → +2 VU
+  c.beginPath();
+  c.arc(VU_CX, VU_CY, VU_R, vuAngleRad(0), vuAngleRad(2), false);
+  c.stroke();
+
+  c.strokeStyle = '#cc2000';   // red: +2 → +3 VU
+  c.beginPath();
+  c.arc(VU_CX, VU_CY, VU_R, vuAngleRad(2), vuAngleRad(3), false);
+  c.stroke();
+
+  // Tick marks and labels
+  c.lineCap = 'round';
+  for (const m of VU_MARKS) {
+    const a   = vuAngleRad(m.vu);
+    const cos = Math.cos(a);
+    const sin = Math.sin(a);
+    const rOuter = VU_R + 5;
+    const rInner = m.major ? VU_R - VU_AW - 12 : VU_R - VU_AW - 7;
+
+    c.strokeStyle = m.vu >= 0 ? '#880800' : '#0e4a08';
+    c.lineWidth   = m.major ? 2 : 1.5;
+    c.beginPath();
+    c.moveTo(VU_CX + rInner * cos, VU_CY + rInner * sin);
+    c.lineTo(VU_CX + rOuter * cos, VU_CY + rOuter * sin);
+    c.stroke();
+
+    if (m.label) {
+      const rL = VU_R - VU_AW - 25;
+      c.font         = `bold ${m.major ? 9 : 8}px "Segoe UI", system-ui, sans-serif`;
+      c.fillStyle    = m.vu >= 0 ? '#880800' : '#0e4a08';
+      c.textAlign    = 'center';
+      c.textBaseline = 'middle';
+      c.fillText(m.label, VU_CX + rL * cos, VU_CY + rL * sin);
+    }
+  }
+
+  // "VU" label
+  c.font = 'bold 11px Georgia, serif';
+  c.fillStyle    = '#4a2808';
+  c.textAlign    = 'center';
+  c.textBaseline = 'middle';
+  c.fillText('VU', VU_CX + 36, VU_CY - 14);
+
+  // Glass-glare overlay on the meter window
+  const glare = c.createLinearGradient(MX, MY, MX, MY + MH * 0.4);
+  glare.addColorStop(0,   'rgba(255,255,255,0.22)');
+  glare.addColorStop(0.5, 'rgba(255,255,255,0.04)');
+  glare.addColorStop(1,   'rgba(255,255,255,0)');
+  c.fillStyle = glare;
+  c.beginPath(); c.roundRect(MX, MY, MW, MH, 3); c.fill();
+
+  // Corner screws (brass Phillips heads)
+  for (const [sx, sy] of [
+    [MX + 9,      MY + 9     ],
+    [MX + MW - 9, MY + 9     ],
+    [MX + 9,      MY + MH - 9],
+    [MX + MW - 9, MY + MH - 9],
+  ]) {
+    c.fillStyle   = '#b8a080';
+    c.strokeStyle = '#8a6040';
+    c.lineWidth   = 1;
+    c.beginPath(); c.arc(sx, sy, 4, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.strokeStyle = '#5a3a20';
+    c.lineWidth   = 0.8;
+    c.beginPath(); c.moveTo(sx - 2.5, sy); c.lineTo(sx + 2.5, sy); c.stroke();
+    c.beginPath(); c.moveTo(sx, sy - 2.5); c.lineTo(sx, sy + 2.5); c.stroke();
+  }
+
+  // Cache the static face so we only putImageData to restore it before each needle draw
+  vuFaceData = c.getImageData(0, 0, VW, VH);
+}
+
+function drawVuNeedle() {
+  if (!vuFaceData) return;
+  vuCtx.putImageData(vuFaceData, 0, 0);
+
+  const a   = vuAngleRad(vuCurrent);
+  const cos = Math.cos(a);
+  const sin = Math.sin(a);
+  const nR  = VU_R + 3;
+
+  // Drop shadow
+  vuCtx.save();
+  vuCtx.strokeStyle = 'rgba(0,0,0,0.18)';
+  vuCtx.lineWidth   = 2.5;
+  vuCtx.lineCap     = 'round';
+  vuCtx.beginPath();
+  vuCtx.moveTo(VU_CX + 1.5, VU_CY + 1.5);
+  vuCtx.lineTo(VU_CX + 1.5 + nR * cos, VU_CY + 1.5 + nR * sin);
+  vuCtx.stroke();
+
+  // Needle
+  vuCtx.strokeStyle = '#100500';
+  vuCtx.lineWidth   = 1.5;
+  vuCtx.beginPath();
+  vuCtx.moveTo(VU_CX, VU_CY);
+  vuCtx.lineTo(VU_CX + nR * cos, VU_CY + nR * sin);
+  vuCtx.stroke();
+  vuCtx.restore();
+
+  // Pivot knob
+  vuCtx.fillStyle   = '#7a3a10';
+  vuCtx.strokeStyle = '#2e1000';
+  vuCtx.lineWidth   = 1;
+  vuCtx.beginPath();
+  vuCtx.arc(VU_CX, VU_CY, 5, 0, Math.PI * 2);
+  vuCtx.fill();
+  vuCtx.stroke();
+}
+
+drawVuFace();
+drawVuNeedle();
 
 // ─── dB Scale ─────────────────────────────────────────────────────────────────
 // Must match analyser.minDecibels / maxDecibels set during startCapture().
@@ -212,11 +389,33 @@ function render() {
     ctx.stroke();
     ctx.shadowBlur = 0;
     peakLabel.textContent = 'Waveform';
+
+    // VU level from time-domain RMS
+    let rmsSum = 0;
+    for (let i = 0; i < td.length; i++) {
+      const s = (td[i] - 128) / 128;
+      rmsSum += s * s;
+    }
+    const rms = Math.sqrt(rmsSum / td.length);
+    vuTarget = Math.max(-20, Math.min(3, (rms > 0 ? 20 * Math.log10(rms) : -90) + 18));
   } else {
     const fd = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(fd);
     drawBars(fd);
+
+    // VU level from average frequency-bin amplitude
+    let binSum = 0;
+    const usedBinsVu = Math.floor(fd.length * 0.75);
+    for (let i = 0; i < usedBinsVu; i++) binSum += fd[i];
+    const avgByte = binSum / usedBinsVu;
+    const dBFSavg = (avgByte / 255) * (SPEC_MAX_DB - SPEC_MIN_DB) + SPEC_MIN_DB;
+    vuTarget = Math.max(-20, Math.min(3, dBFSavg + 18));
   }
+
+  // Ballistic smoothing: fast attack (~35% per frame), slow release (~5%)
+  if (vuTarget > vuCurrent) vuCurrent += (vuTarget - vuCurrent) * 0.35;
+  else                       vuCurrent += (vuTarget - vuCurrent) * 0.05;
+  drawVuNeedle();
 }
 
 // ─── Tab Capture ──────────────────────────────────────────────────────────────

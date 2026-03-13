@@ -124,6 +124,20 @@ select:hover { border-color: #c8993a; }
 
 #peak-label { color: #a07040; }
 
+/* ── VU Meter ──────────────────────────────────────────────────────────────── */
+.vu-wrap {
+  position: relative;
+  width: 100%;
+  border-top: 1px solid #5a3010;
+  border-bottom: 1px solid #3a1c07;
+}
+
+#vu-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 /* ── EQ Section — raised wood panel ───────────────────────────────────────── */
 .eq-section {
   padding: 14px 10px 14px;
