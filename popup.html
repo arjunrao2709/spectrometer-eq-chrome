@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spectrometer EQ</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ── Header ────────────────────────────────────────────────────────── -->
+  <header>
+    <span class="title">SPECTROMETER EQ</span>
+    <span class="status" id="status">OFF</span>
+  </header>
+
+  <!-- ── Spectrum Canvas ───────────────────────────────────────────────── -->
+  <canvas id="spectrum" width="380" height="140"></canvas>
+
+  <!-- ── 3-Band Rotary EQ ──────────────────────────────────────────────── -->
+  <section class="eq-section">
+    <div class="eq-title">3-BAND ROTARY EQ</div>
+    <div class="eq-row">
+
+      <!-- HIGH band -->
+      <div class="knob-wrap" data-band="high">
+        <div class="band-name high">HIGH</div>
+        <div class="knob-container">
+          <!--
+            Arc SVG: track (gray 300° arc) + active fill + 0 dB tick at 12 o'clock.
+            Geometry: cx=40 cy=40 r=34
+              Start (-150° from 12 o'clock): SVG angle 120° → (23, 69.4)
+              End   (+150° from 12 o'clock): SVG angle  60° → (57, 69.4)
+          -->
+          <svg class="arc-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <!-- Full-range track -->
+            <path d="M 23.00 69.44 A 34 34 0 1 1 57.00 69.44"
+                  fill="none" stroke="#252525" stroke-width="3.5" stroke-linecap="round"/>
+            <!-- 0 dB tick at 12 o'clock -->
+            <line x1="40" y1="5"  x2="40" y2="13"
+                  stroke="#3a3a3a" stroke-width="2" stroke-linecap="round"/>
+            <!-- Active fill (updated by JS) -->
+            <path id="arc-fill-high" d=""
+                  fill="none" stroke="#ff6633" stroke-width="3.5" stroke-linecap="round"/>
+          </svg>
+          <!-- Rotating knob body -->
+          <div class="knob-body" id="knob-body-high">
+            <div class="knob-pip high-pip"></div>
+          </div>
+        </div>
+        <div class="db-value" id="db-high">0.0 dB</div>
+        <div class="freq-label">3.2 kHz</div>
+      </div>
+
+      <!-- MID band -->
+      <div class="knob-wrap" data-band="mid">
+        <div class="band-name mid">MID</div>
+        <div class="knob-container">
+          <svg class="arc-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 23.00 69.44 A 34 34 0 1 1 57.00 69.44"
+                  fill="none" stroke="#252525" stroke-width="3.5" stroke-linecap="round"/>
+            <line x1="40" y1="5"  x2="40" y2="13"
+                  stroke="#3a3a3a" stroke-width="2" stroke-linecap="round"/>
+            <path id="arc-fill-mid" d=""
+                  fill="none" stroke="#ffcc00" stroke-width="3.5" stroke-linecap="round"/>
+          </svg>
+          <div class="knob-body" id="knob-body-mid">
+            <div class="knob-pip mid-pip"></div>
+          </div>
+        </div>
+        <div class="db-value" id="db-mid">0.0 dB</div>
+        <div class="freq-label">1.0 kHz</div>
+      </div>
+
+      <!-- LOW band -->
+      <div class="knob-wrap" data-band="low">
+        <div class="band-name low">LOW</div>
+        <div class="knob-container">
+          <svg class="arc-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 23.00 69.44 A 34 34 0 1 1 57.00 69.44"
+                  fill="none" stroke="#252525" stroke-width="3.5" stroke-linecap="round"/>
+            <line x1="40" y1="5"  x2="40" y2="13"
+                  stroke="#3a3a3a" stroke-width="2" stroke-linecap="round"/>
+            <path id="arc-fill-low" d=""
+                  fill="none" stroke="#3399ff" stroke-width="3.5" stroke-linecap="round"/>
+          </svg>
+          <div class="knob-body" id="knob-body-low">
+            <div class="knob-pip low-pip"></div>
+          </div>
+        </div>
+        <div class="db-value" id="db-low">0.0 dB</div>
+        <div class="freq-label">320 Hz</div>
+      </div>
+
+    </div><!-- .eq-row -->
+  </section>
+
+  <!-- ── Footer ────────────────────────────────────────────────────────── -->
+  <footer>
+    <input type="file" id="file-input" accept="audio/*">
+    <div class="btn-group">
+      <button id="btn-file">LOAD FILE</button>
+      <button id="btn-mic">MIC</button>
+    </div>
+    <button id="btn-play" disabled>PLAY</button>
+    <span class="hint">↕ drag · scroll · dbl-click reset</span>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

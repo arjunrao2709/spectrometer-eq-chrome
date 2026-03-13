@@ -1,0 +1,232 @@
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Body ──────────────────────────────────────────────────────────────────── */
+body {
+  width: 380px;
+  background: #111;
+  color: #ccc;
+  font-family: 'Courier New', Courier, monospace;
+  user-select: none;
+  overflow: hidden;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: #0a0a0a;
+  border-bottom: 1px solid #1e1e1e;
+}
+
+.title {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #555;
+  font-weight: bold;
+}
+
+.status {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #444;
+  padding: 2px 8px;
+  border: 1px solid #1e1e1e;
+}
+
+.status.live {
+  color: #00ff88;
+  border-color: #00ff8844;
+  text-shadow: 0 0 6px #00ff88;
+}
+
+/* ── Spectrum Canvas ───────────────────────────────────────────────────────── */
+#spectrum {
+  display: block;
+  width: 380px;
+  height: 140px;
+  background: #050505;
+}
+
+/* ── EQ Section ────────────────────────────────────────────────────────────── */
+.eq-section {
+  padding: 14px 10px 10px;
+  background: #0f0f0f;
+  border-top: 1px solid #1e1e1e;
+}
+
+.eq-title {
+  text-align: center;
+  font-size: 8px;
+  letter-spacing: 3px;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.eq-row {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+}
+
+/* ── Knob Wrap ─────────────────────────────────────────────────────────────── */
+.knob-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: ns-resize;
+}
+
+.band-name {
+  font-size: 9px;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+
+.band-name.high { color: #ff6633; }
+.band-name.mid  { color: #ffcc00; }
+.band-name.low  { color: #3399ff; }
+
+/* ── Knob Container ────────────────────────────────────────────────────────── */
+/*
+ * 80×80 box that holds:
+ *   - .arc-svg   : SVG overlay for the track + active arc (pointer-events:none)
+ *   - .knob-body : rotating metal knob centered at (14,14)
+ */
+.knob-container {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+/* ── Arc SVG ───────────────────────────────────────────────────────────────── */
+.arc-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 80px;
+  height: 80px;
+  pointer-events: none;
+}
+
+/* ── Knob Body ─────────────────────────────────────────────────────────────── */
+/*
+ * 52×52 metal-look circle centered in the 80×80 container.
+ * offset = (80 - 52) / 2 = 14px
+ * JS sets transform: rotate(Xdeg) — transform-origin defaults to 50% 50%.
+ */
+.knob-body {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 38% 32%, #505050 0%, #1e1e1e 55%, #0e0e0e 100%);
+  border: 2px solid #2e2e2e;
+  box-shadow:
+    0 5px 14px rgba(0, 0, 0, 0.9),
+    inset 0 1px 2px rgba(255, 255, 255, 0.08),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 5px;
+  transform: rotate(0deg);
+  /* pointer events handled by .knob-wrap */
+  pointer-events: none;
+}
+
+/* ── Pip (position indicator) ─────────────────────────────────────────────── */
+.knob-pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.high-pip { background: #ff6633; box-shadow: 0 0 5px #ff6633aa; }
+.mid-pip  { background: #ffcc00; box-shadow: 0 0 5px #ffcc00aa; }
+.low-pip  { background: #3399ff; box-shadow: 0 0 5px #3399ffaa; }
+
+/* ── dB Value Display ──────────────────────────────────────────────────────── */
+.db-value {
+  font-size: 10px;
+  color: #555;
+  letter-spacing: 1px;
+  min-width: 68px;
+  text-align: center;
+  transition: color 0.1s;
+}
+
+.db-value.kill {
+  color: #ff3333;
+  text-shadow: 0 0 6px #ff333388;
+}
+
+/* ── Frequency Label ───────────────────────────────────────────────────────── */
+.freq-label {
+  font-size: 8px;
+  color: #333;
+  letter-spacing: 1px;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────────────── */
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #0a0a0a;
+  border-top: 1px solid #1e1e1e;
+  gap: 8px;
+}
+
+#file-input { display: none; }
+
+.btn-group {
+  display: flex;
+  gap: 4px;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+button {
+  background: #181818;
+  color: #555;
+  border: 1px solid #2e2e2e;
+  padding: 5px 12px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.1s, color 0.1s;
+}
+
+button:hover:not(:disabled) {
+  background: #222;
+  color: #888;
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+button.active {
+  background: #001a0e;
+  color: #00ff88;
+  border-color: #00ff8855;
+}
+
+/* ── Hint ──────────────────────────────────────────────────────────────────── */
+.hint {
+  font-size: 8px;
+  color: #2e2e2e;
+  letter-spacing: 0.3px;
+  flex: 1;
+  text-align: right;
+  white-space: nowrap;
+}
