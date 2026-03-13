@@ -1,35 +1,52 @@
 /* ── Reset ─────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Body ──────────────────────────────────────────────────────────────────── */
+/* ── Body — dark walnut wood panel ─────────────────────────────────────────── */
 body {
   width: 100%;
-  background: #0a0a0f;
-  color: #ccc;
+  background:
+    repeating-linear-gradient(
+      88deg,
+      transparent 0px, transparent 5px,
+      rgba(0,0,0,0.07) 5px, rgba(0,0,0,0.07) 8px,
+      transparent 8px, transparent 18px,
+      rgba(255,190,100,0.03) 18px, rgba(255,190,100,0.03) 22px
+    ),
+    linear-gradient(175deg, #2e1505 0%, #4a2208 30%, #3a1b06 55%, #5a2c10 80%, #3a1b06 100%);
+  color: #e8d4a8;
   font-family: 'Segoe UI', system-ui, sans-serif;
   user-select: none;
   overflow-x: hidden;
 }
 
-/* ── Header ────────────────────────────────────────────────────────────────── */
+/* ── Header — darker walnut cap ────────────────────────────────────────────── */
 header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px 8px;
-  background: #0a0a0f;
-  border-bottom: 1px solid #1e1e2e;
+  background:
+    repeating-linear-gradient(
+      88deg,
+      transparent 0px, transparent 6px,
+      rgba(0,0,0,0.10) 6px, rgba(0,0,0,0.10) 9px
+    ),
+    linear-gradient(180deg, #1c0a02 0%, #2e1507 100%);
+  border-bottom: 1px solid #6b3d10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.7);
 }
 
 .title {
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #a0a0c0;
+  color: #c8993a;
+  text-shadow: 0 0 14px rgba(200,150,50,0.35);
+  font-family: Georgia, 'Times New Roman', serif;
 }
 
-/* ── Header Controls (mode select + capture button) ───────────────────────── */
+/* ── Header Controls ───────────────────────────────────────────────────────── */
 .controls {
   display: flex;
   gap: 8px;
@@ -37,45 +54,44 @@ header {
 }
 
 select {
-  background: #16162a;
-  border: 1px solid #2e2e4e;
-  color: #a0a0c0;
+  background: #1e0e03;
+  border: 1px solid #7a4c18;
+  color: #c8993a;
   font-size: 11px;
   padding: 3px 6px;
-  border-radius: 4px;
+  border-radius: 3px;
   cursor: pointer;
   outline: none;
 }
 
-select:hover { border-color: #5555aa; }
+select:hover { border-color: #c8993a; }
 
 #btn-capture {
-  background: #3a3a7a;
-  color: #c0c0ff;
-  border: none;
-  border-radius: 5px;
+  background: linear-gradient(180deg, #6b3e10 0%, #3d1f05 100%);
+  color: #e8c57a;
+  border: 1px solid #8b5c20;
+  border-radius: 4px;
   padding: 4px 10px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  letter-spacing: 0.04em;
-  transition: background 0.15s;
+  letter-spacing: 0.06em;
+  transition: all 0.15s;
   font-family: inherit;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,200,100,0.12);
 }
 
-#btn-capture:hover         { background: #5050aa; }
-#btn-capture.active        { background: #aa3060; color: #ffd0e0; }
-#btn-capture.active:hover  { background: #cc3070; }
+#btn-capture:hover         { background: linear-gradient(180deg, #8b5218 0%, #5a2e08 100%); color: #ffe0a0; }
+#btn-capture.active        { background: linear-gradient(180deg, #6b1e10 0%, #3d0f05 100%); color: #ffb0a0; border-color: #9a3020; }
+#btn-capture.active:hover  { background: linear-gradient(180deg, #8b2818 0%, #5a1408 100%); }
 
 /* ── Canvas Wrap & Spectrum ────────────────────────────────────────────────── */
 .canvas-wrap {
   position: relative;
   width: 100%;
+  border-bottom: 1px solid #5a3010;
 }
 
-/* The canvas drawing buffer stays at 480 px (set via the HTML width attribute)
-   so rendering resolution is preserved. CSS width:100% scales the display to
-   fill whatever width the side panel happens to be. */
 #canvas {
   display: block;
   width: 100%;
@@ -88,7 +104,7 @@ select:hover { border-color: #5555aa; }
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 13px;
-  color: #555577;
+  color: #6b4820;
   text-align: center;
   pointer-events: none;
   white-space: nowrap;
@@ -100,25 +116,37 @@ select:hover { border-color: #5555aa; }
   justify-content: space-between;
   padding: 5px 14px;
   font-size: 10px;
-  color: #44446a;
-  border-top: 1px solid #1e1e2e;
+  color: #7a5528;
+  border-top: 1px solid #4a2808;
+  border-bottom: 1px solid #4a2808;
+  background: rgba(0,0,0,0.3);
 }
 
-#peak-label { color: #6666aa; }
+#peak-label { color: #a07040; }
 
-/* ── EQ Section ────────────────────────────────────────────────────────────── */
+/* ── EQ Section — raised wood panel ───────────────────────────────────────── */
 .eq-section {
   padding: 14px 10px 14px;
-  background: #0c0c16;
-  border-top: 1px solid #1e1e2e;
+  background:
+    repeating-linear-gradient(
+      91deg,
+      transparent 0px, transparent 7px,
+      rgba(0,0,0,0.05) 7px, rgba(0,0,0,0.05) 10px
+    ),
+    linear-gradient(180deg, #3a1c07 0%, #4e2810 50%, #3a1c07 100%);
+  border-top: 2px solid #7a4818;
+  box-shadow:
+    inset 0 2px 8px rgba(0,0,0,0.5),
+    inset 0 -2px 6px rgba(0,0,0,0.3);
 }
 
 .eq-title {
   text-align: center;
   font-size: 8px;
   letter-spacing: 3px;
-  color: #333;
+  color: #7a5528;
   margin-bottom: 12px;
+  font-family: Georgia, serif;
 }
 
 .eq-row {
@@ -140,18 +168,14 @@ select:hover { border-color: #5555aa; }
   font-size: 9px;
   letter-spacing: 3px;
   font-weight: bold;
+  font-family: Georgia, serif;
 }
 
-.band-name.high { color: #ff6633; }
-.band-name.mid  { color: #ffcc00; }
-.band-name.low  { color: #3399ff; }
+.band-name.high { color: #cc6633; }
+.band-name.mid  { color: #cc9922; }
+.band-name.low  { color: #5599bb; }
 
 /* ── Knob Container ────────────────────────────────────────────────────────── */
-/*
- * 80×80 box that holds:
- *   - .arc-svg   : SVG overlay for the track + active arc (pointer-events:none)
- *   - .knob-body : rotating metal knob centered at (14,14)
- */
 .knob-container {
   position: relative;
   width: 80px;
@@ -168,11 +192,10 @@ select:hover { border-color: #5555aa; }
   pointer-events: none;
 }
 
-/* ── Knob Body ─────────────────────────────────────────────────────────────── */
+/* ── Knob Body — dark rosewood with brass ring ─────────────────────────────── */
 /*
- * 52×52 metal-look circle centered in the 80×80 container.
+ * 52×52 circle centered in the 80×80 container.
  * offset = (80 - 52) / 2 = 14px
- * JS sets transform: rotate(Xdeg) — transform-origin defaults to 50% 50%.
  */
 .knob-body {
   position: absolute;
@@ -181,36 +204,35 @@ select:hover { border-color: #5555aa; }
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: radial-gradient(ellipse at 38% 32%, #505050 0%, #1e1e1e 55%, #0e0e0e 100%);
-  border: 2px solid #2e2e2e;
+  background: radial-gradient(ellipse at 38% 32%, #a07848 0%, #6b4418 45%, #2e1804 100%);
+  border: 2px solid #a07830;
   box-shadow:
-    0 5px 14px rgba(0, 0, 0, 0.9),
-    inset 0 1px 2px rgba(255, 255, 255, 0.08),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.6);
+    0 5px 16px rgba(0, 0, 0, 0.9),
+    inset 0 1px 3px rgba(220, 180, 80, 0.28),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding-top: 5px;
   transform: rotate(0deg);
-  /* pointer events handled by .knob-wrap */
   pointer-events: none;
 }
 
-/* ── Pip (position indicator) ─────────────────────────────────────────────── */
+/* ── Pip (position indicator dot) ─────────────────────────────────────────── */
 .knob-pip {
   width: 5px;
   height: 5px;
   border-radius: 50%;
 }
 
-.high-pip { background: #ff6633; box-shadow: 0 0 5px #ff6633aa; }
-.mid-pip  { background: #ffcc00; box-shadow: 0 0 5px #ffcc00aa; }
-.low-pip  { background: #3399ff; box-shadow: 0 0 5px #3399ffaa; }
+.high-pip { background: #e07040; box-shadow: 0 0 5px #e0704099; }
+.mid-pip  { background: #d4a030; box-shadow: 0 0 5px #d4a03099; }
+.low-pip  { background: #5090bb; box-shadow: 0 0 5px #5090bb99; }
 
 /* ── dB Value Display ──────────────────────────────────────────────────────── */
 .db-value {
   font-size: 10px;
-  color: #555;
+  color: #7a5a28;
   letter-spacing: 1px;
   min-width: 68px;
   text-align: center;
@@ -218,23 +240,23 @@ select:hover { border-color: #5555aa; }
 }
 
 .db-value.kill {
-  color: #ff3333;
-  text-shadow: 0 0 6px #ff333388;
+  color: #cc3322;
+  text-shadow: 0 0 6px #cc332255;
 }
 
 /* ── Frequency Label ───────────────────────────────────────────────────────── */
 .freq-label {
   font-size: 8px;
-  color: #333;
+  color: #5a3d18;
   letter-spacing: 1px;
 }
 
-/* ── Hint (shown inside eq-section) ───────────────────────────────────────── */
+/* ── Hint ──────────────────────────────────────────────────────────────────── */
 .hint {
   display: block;
   text-align: center;
   font-size: 9px;
-  color: #2a2a3a;
+  color: #5a3d18;
   letter-spacing: 0.3px;
   margin-top: 10px;
 }

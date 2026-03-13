@@ -55,18 +55,19 @@ const PEAK_HOLD_FRAMES = 30;
 const PEAK_DECAY_RATE  = 1.5;
 
 function buildGradients() {
+  // Warm amber/copper spectrum — like vintage phosphor or VU meters on wood gear
   barGradient = ctx.createLinearGradient(0, H, 0, 0);
-  barGradient.addColorStop(0.0, '#1a0a3a');
-  barGradient.addColorStop(0.3, '#3b1fa8');
-  barGradient.addColorStop(0.6, '#a020f0');
-  barGradient.addColorStop(0.8, '#ff2080');
-  barGradient.addColorStop(1.0, '#ff8040');
+  barGradient.addColorStop(0.0, '#1a0c02');
+  barGradient.addColorStop(0.3, '#6b3010');
+  barGradient.addColorStop(0.6, '#c86020');
+  barGradient.addColorStop(0.85, '#e09030');
+  barGradient.addColorStop(1.0, '#f0c050');
 
   mirrorGradient = ctx.createLinearGradient(0, 0, 0, H);
-  mirrorGradient.addColorStop(0.0, '#ff8040');
-  mirrorGradient.addColorStop(0.2, '#ff2080');
-  mirrorGradient.addColorStop(0.5, '#a020f0');
-  mirrorGradient.addColorStop(1.0, '#3b1fa8');
+  mirrorGradient.addColorStop(0.0, '#f0c050');
+  mirrorGradient.addColorStop(0.2, '#e09030');
+  mirrorGradient.addColorStop(0.5, '#c86020');
+  mirrorGradient.addColorStop(1.0, '#6b3010');
 }
 
 buildGradients();
@@ -78,9 +79,9 @@ function initPeaks(count) {
 
 // ─── Spectrum: Draw Functions ─────────────────────────────────────────────────
 function drawIdle() {
-  ctx.fillStyle = '#0a0a0f';
+  ctx.fillStyle = '#150a02';
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = '#111122';
+  ctx.strokeStyle = '#2a1508';
   ctx.lineWidth = 1;
   for (let y = 0; y < H; y += 40) {
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
@@ -90,9 +91,9 @@ function drawIdle() {
 drawIdle();
 
 function drawBars(dataArray) {
-  ctx.fillStyle = '#0a0a0f';
+  ctx.fillStyle = '#150a02';
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = '#111122';
+  ctx.strokeStyle = '#2a1508';
   ctx.lineWidth = 1;
   for (let y = 0; y < H; y += 44) {
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
@@ -131,7 +132,7 @@ function drawBars(dataArray) {
       ctx.fillStyle = mirrorGradient;
       ctx.fillRect(x, halfH - barH / 2, barW, barH);
       if (peakValues[i] > 2) {
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.fillStyle = 'rgba(240,200,100,0.75)';
         ctx.fillRect(x, halfH - peakValues[i] / 2 - 1, barW, 2);
         ctx.fillRect(x, halfH + peakValues[i] / 2 - 1, barW, 2);
       }
@@ -139,7 +140,7 @@ function drawBars(dataArray) {
       ctx.fillStyle = barGradient;
       ctx.fillRect(x, H - barH, barW, barH);
       if (peakValues[i] > 2) {
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillStyle = 'rgba(240,200,100,0.85)';
         ctx.fillRect(x, H - peakValues[i] - 1, barW, 2);
       }
     }
@@ -163,8 +164,8 @@ function render() {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     }
     ctx.lineWidth   = 2;
-    ctx.strokeStyle = '#a020f0';
-    ctx.shadowColor = '#a020f0';
+    ctx.strokeStyle = '#d4901a';
+    ctx.shadowColor = '#c87010';
     ctx.shadowBlur  = 8;
     ctx.beginPath();
     const sliceW = W / analyser.fftSize;
