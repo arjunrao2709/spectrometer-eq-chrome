@@ -59,19 +59,19 @@ const PEAK_HOLD_FRAMES = 30;
 const PEAK_DECAY_RATE  = 1.5;
 
 function buildGradients() {
-  // Warm amber/copper spectrum — like vintage phosphor or VU meters on wood gear
+  // LED level-meter colour ramp: green (quiet) → yellow → red (clip)
   barGradient = ctx.createLinearGradient(0, H, 0, 0);
-  barGradient.addColorStop(0.0, '#1a0c02');
-  barGradient.addColorStop(0.3, '#6b3010');
-  barGradient.addColorStop(0.6, '#c86020');
-  barGradient.addColorStop(0.85, '#e09030');
-  barGradient.addColorStop(1.0, '#f0c050');
+  barGradient.addColorStop(0.0,  '#0a1a0a');
+  barGradient.addColorStop(0.5,  '#18a818');
+  barGradient.addColorStop(0.75, '#d4b010');
+  barGradient.addColorStop(0.9,  '#e05010');
+  barGradient.addColorStop(1.0,  '#cc1010');
 
   mirrorGradient = ctx.createLinearGradient(0, 0, 0, H);
-  mirrorGradient.addColorStop(0.0, '#f0c050');
-  mirrorGradient.addColorStop(0.2, '#e09030');
-  mirrorGradient.addColorStop(0.5, '#c86020');
-  mirrorGradient.addColorStop(1.0, '#6b3010');
+  mirrorGradient.addColorStop(0.0, '#cc1010');
+  mirrorGradient.addColorStop(0.2, '#e05010');
+  mirrorGradient.addColorStop(0.5, '#18a818');
+  mirrorGradient.addColorStop(1.0, '#0a1a0a');
 }
 
 buildGradients();
@@ -118,93 +118,94 @@ const VU_MARKS = [
 function drawVuFace() {
   const c = vuCtx;
 
-  // Outer walnut frame
-  c.fillStyle = '#2a1204';
+  // ── Outer frame: dark anodized panel ───────────────────────────────────────
+  c.fillStyle = '#111111';
   c.fillRect(0, 0, VW, VH);
 
-  // Cream meter card
-  const MX = 22, MY = 6, MW = VW - 44, MH = VH - 20;
-  c.fillStyle = '#f0ebdf';
-  c.beginPath(); c.roundRect(MX, MY, MW, MH, 3); c.fill();
+  // Subtle inset panel border
+  c.strokeStyle = 'rgba(255,255,255,0.07)';
+  c.lineWidth   = 1;
+  c.strokeRect(14, 5, VW - 28, VH - 12);
 
-  // Coloured scale arc bands
-  c.lineCap   = 'butt';
-  c.lineWidth = VU_AW;
+  // ── Coloured scale arc bands ────────────────────────────────────────────────
+  // Dim track groove (full sweep)
+  c.lineCap     = 'butt';
+  c.lineWidth   = VU_AW;
+  c.strokeStyle = '#242424';
+  c.beginPath();
+  c.arc(VU_CX, VU_CY, VU_R, vuAngleRad(-20), vuAngleRad(3), false);
+  c.stroke();
 
-  c.strokeStyle = '#1e8814';   // green: -20 → 0 VU
+  // Green zone: -20 → 0 VU
+  c.strokeStyle = '#1aaa18';
   c.beginPath();
   c.arc(VU_CX, VU_CY, VU_R, vuAngleRad(-20), vuAngleRad(0), false);
   c.stroke();
 
-  c.strokeStyle = '#c88a00';   // amber: 0 → +2 VU
+  // Amber zone: 0 → +2 VU
+  c.strokeStyle = '#e8a010';
   c.beginPath();
   c.arc(VU_CX, VU_CY, VU_R, vuAngleRad(0), vuAngleRad(2), false);
   c.stroke();
 
-  c.strokeStyle = '#cc2000';   // red: +2 → +3 VU
+  // Red zone: +2 → +3 VU
+  c.strokeStyle = '#e82010';
   c.beginPath();
   c.arc(VU_CX, VU_CY, VU_R, vuAngleRad(2), vuAngleRad(3), false);
   c.stroke();
 
-  // Tick marks and labels
+  // ── Tick marks and labels ───────────────────────────────────────────────────
   c.lineCap = 'round';
   for (const m of VU_MARKS) {
     const a   = vuAngleRad(m.vu);
     const cos = Math.cos(a);
     const sin = Math.sin(a);
-    const rOuter = VU_R + 5;
-    const rInner = m.major ? VU_R - VU_AW - 12 : VU_R - VU_AW - 7;
+    const rOuter = VU_R + 6;
+    const rInner = m.major ? VU_R - VU_AW - 10 : VU_R - VU_AW - 6;
 
-    c.strokeStyle = m.vu >= 0 ? '#880800' : '#0e4a08';
-    c.lineWidth   = m.major ? 2 : 1.5;
+    c.strokeStyle = m.vu >= 0 ? 'rgba(232,50,20,0.9)' : 'rgba(200,200,200,0.7)';
+    c.lineWidth   = m.major ? 1.5 : 1;
     c.beginPath();
     c.moveTo(VU_CX + rInner * cos, VU_CY + rInner * sin);
     c.lineTo(VU_CX + rOuter * cos, VU_CY + rOuter * sin);
     c.stroke();
 
     if (m.label) {
-      const rL = VU_R - VU_AW - 25;
-      c.font         = `bold ${m.major ? 9 : 8}px "Segoe UI", system-ui, sans-serif`;
-      c.fillStyle    = m.vu >= 0 ? '#880800' : '#0e4a08';
+      const rL = VU_R - VU_AW - 24;
+      c.font         = `${m.major ? 'bold ' : ''}${m.major ? 9 : 8}px "Segoe UI", system-ui, sans-serif`;
+      c.fillStyle    = m.vu >= 0 ? 'rgba(232,100,80,0.95)' : 'rgba(180,180,180,0.85)';
       c.textAlign    = 'center';
       c.textBaseline = 'middle';
       c.fillText(m.label, VU_CX + rL * cos, VU_CY + rL * sin);
     }
   }
 
-  // "VU" label
-  c.font = 'bold 11px Georgia, serif';
-  c.fillStyle    = '#4a2808';
+  // ── "VU" label ──────────────────────────────────────────────────────────────
+  c.font         = 'bold 10px "Segoe UI", system-ui, sans-serif';
+  c.fillStyle    = 'rgba(160,160,160,0.7)';
   c.textAlign    = 'center';
   c.textBaseline = 'middle';
-  c.fillText('VU', VU_CX + 36, VU_CY - 14);
+  c.fillText('VU', VU_CX + 38, VU_CY - 16);
 
-  // Glass-glare overlay on the meter window
-  const glare = c.createLinearGradient(MX, MY, MX, MY + MH * 0.4);
-  glare.addColorStop(0,   'rgba(255,255,255,0.22)');
-  glare.addColorStop(0.5, 'rgba(255,255,255,0.04)');
-  glare.addColorStop(1,   'rgba(255,255,255,0)');
-  c.fillStyle = glare;
-  c.beginPath(); c.roundRect(MX, MY, MW, MH, 3); c.fill();
-
-  // Corner screws (brass Phillips heads)
+  // ── Corner screws (dark machine screws) ─────────────────────────────────────
   for (const [sx, sy] of [
-    [MX + 9,      MY + 9     ],
-    [MX + MW - 9, MY + 9     ],
-    [MX + 9,      MY + MH - 9],
-    [MX + MW - 9, MY + MH - 9],
+    [22,      10     ],
+    [VW - 22, 10     ],
+    [22,      VH - 10],
+    [VW - 22, VH - 10],
   ]) {
-    c.fillStyle   = '#b8a080';
-    c.strokeStyle = '#8a6040';
+    c.fillStyle   = '#333333';
+    c.strokeStyle = 'rgba(255,255,255,0.12)';
     c.lineWidth   = 1;
     c.beginPath(); c.arc(sx, sy, 4, 0, Math.PI * 2); c.fill(); c.stroke();
-    c.strokeStyle = '#5a3a20';
+    // Phillips slot
+    c.strokeStyle = 'rgba(255,255,255,0.18)';
     c.lineWidth   = 0.8;
-    c.beginPath(); c.moveTo(sx - 2.5, sy); c.lineTo(sx + 2.5, sy); c.stroke();
-    c.beginPath(); c.moveTo(sx, sy - 2.5); c.lineTo(sx, sy + 2.5); c.stroke();
+    c.beginPath(); c.moveTo(sx - 2.2, sy); c.lineTo(sx + 2.2, sy); c.stroke();
+    c.beginPath(); c.moveTo(sx, sy - 2.2); c.lineTo(sx, sy + 2.2); c.stroke();
   }
 
-  // Cache the static face so we only putImageData to restore it before each needle draw
+  // Cache the static face — putImageData each frame before drawing needle
   vuFaceData = c.getImageData(0, 0, VW, VH);
 }
 
@@ -215,30 +216,32 @@ function drawVuNeedle() {
   const a   = vuAngleRad(vuCurrent);
   const cos = Math.cos(a);
   const sin = Math.sin(a);
-  const nR  = VU_R + 3;
+  const nR  = VU_R + 4;
+
+  vuCtx.save();
+  vuCtx.lineCap = 'round';
 
   // Drop shadow
-  vuCtx.save();
-  vuCtx.strokeStyle = 'rgba(0,0,0,0.18)';
-  vuCtx.lineWidth   = 2.5;
-  vuCtx.lineCap     = 'round';
+  vuCtx.strokeStyle = 'rgba(0,0,0,0.5)';
+  vuCtx.lineWidth   = 3;
   vuCtx.beginPath();
   vuCtx.moveTo(VU_CX + 1.5, VU_CY + 1.5);
   vuCtx.lineTo(VU_CX + 1.5 + nR * cos, VU_CY + 1.5 + nR * sin);
   vuCtx.stroke();
 
-  // Needle
-  vuCtx.strokeStyle = '#100500';
+  // Needle — bright silver
+  vuCtx.strokeStyle = '#d8d8d8';
   vuCtx.lineWidth   = 1.5;
   vuCtx.beginPath();
   vuCtx.moveTo(VU_CX, VU_CY);
   vuCtx.lineTo(VU_CX + nR * cos, VU_CY + nR * sin);
   vuCtx.stroke();
+
   vuCtx.restore();
 
-  // Pivot knob
-  vuCtx.fillStyle   = '#7a3a10';
-  vuCtx.strokeStyle = '#2e1000';
+  // Pivot
+  vuCtx.fillStyle   = '#888888';
+  vuCtx.strokeStyle = 'rgba(255,255,255,0.2)';
   vuCtx.lineWidth   = 1;
   vuCtx.beginPath();
   vuCtx.arc(VU_CX, VU_CY, 5, 0, Math.PI * 2);
@@ -261,8 +264,8 @@ function drawDbScale(mode) {
   ctx.save();
   ctx.font        = '9px "Segoe UI", system-ui, sans-serif';
   ctx.lineWidth   = 1;
-  ctx.strokeStyle = '#5a2e0e';
-  ctx.fillStyle   = '#9a6830';
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.fillStyle   = '#606060';
 
   for (const db of DB_LEVELS) {
     const norm = (db - SPEC_MIN_DB) / (SPEC_MAX_DB - SPEC_MIN_DB); // 0 → bottom, 1 → top
@@ -293,7 +296,7 @@ function initPeaks(count) {
 
 // ─── Spectrum: Draw Functions ─────────────────────────────────────────────────
 function drawIdle() {
-  ctx.fillStyle = '#150a02';
+  ctx.fillStyle = '#111111';
   ctx.fillRect(0, 0, W, H);
   drawDbScale('bars');
 }
@@ -301,7 +304,7 @@ function drawIdle() {
 drawIdle();
 
 function drawBars(dataArray) {
-  ctx.fillStyle = '#150a02';
+  ctx.fillStyle = '#111111';
   ctx.fillRect(0, 0, W, H);
 
   const mode     = modeSelect.value;
@@ -337,7 +340,7 @@ function drawBars(dataArray) {
       ctx.fillStyle = mirrorGradient;
       ctx.fillRect(x, halfH - barH / 2, barW, barH);
       if (peakValues[i] > 2) {
-        ctx.fillStyle = 'rgba(240,200,100,0.75)';
+        ctx.fillStyle = 'rgba(255,255,255,0.65)';
         ctx.fillRect(x, halfH - peakValues[i] / 2 - 1, barW, 2);
         ctx.fillRect(x, halfH + peakValues[i] / 2 - 1, barW, 2);
       }
@@ -345,7 +348,7 @@ function drawBars(dataArray) {
       ctx.fillStyle = barGradient;
       ctx.fillRect(x, H - barH, barW, barH);
       if (peakValues[i] > 2) {
-        ctx.fillStyle = 'rgba(240,200,100,0.85)';
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
         ctx.fillRect(x, H - peakValues[i] - 1, barW, 2);
       }
     }
@@ -364,19 +367,19 @@ function render() {
   if (modeSelect.value === 'wave') {
     const td = new Uint8Array(analyser.fftSize);
     analyser.getByteTimeDomainData(td);
-    ctx.fillStyle = '#150a02';
+    ctx.fillStyle = '#111111';
     ctx.fillRect(0, 0, W, H);
     // Zero-crossing reference line
-    ctx.strokeStyle = '#5a2e0e';
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
     ctx.font = '9px "Segoe UI", system-ui, sans-serif';
-    ctx.fillStyle = '#9a6830';
+    ctx.fillStyle = '#606060';
     ctx.textBaseline = 'bottom';
     ctx.fillText('0', 3, H / 2 - 1);
     ctx.lineWidth   = 2;
-    ctx.strokeStyle = '#d4901a';
-    ctx.shadowColor = '#c87010';
+    ctx.strokeStyle = '#18c848';
+    ctx.shadowColor = '#10a030';
     ctx.shadowBlur  = 8;
     ctx.beginPath();
     const sliceW = W / analyser.fftSize;
