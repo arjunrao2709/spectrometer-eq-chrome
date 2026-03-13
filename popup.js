@@ -72,6 +72,43 @@ function buildGradients() {
 
 buildGradients();
 
+// ─── dB Scale ─────────────────────────────────────────────────────────────────
+// Must match analyser.minDecibels / maxDecibels set during startCapture().
+const SPEC_MIN_DB = -90;
+const SPEC_MAX_DB = -10;
+const DB_LEVELS   = [-80, -60, -40, -20]; // dB markers to display
+
+// Draws horizontal reference lines with dB labels over the frequency spectrum.
+// mode: 'bars' | 'mirror'
+function drawDbScale(mode) {
+  ctx.save();
+  ctx.font        = '9px "Segoe UI", system-ui, sans-serif';
+  ctx.lineWidth   = 1;
+  ctx.strokeStyle = '#5a2e0e';
+  ctx.fillStyle   = '#9a6830';
+
+  for (const db of DB_LEVELS) {
+    const norm = (db - SPEC_MIN_DB) / (SPEC_MAX_DB - SPEC_MIN_DB); // 0 → bottom, 1 → top
+
+    if (mode === 'mirror') {
+      const offset  = norm * (H / 2);
+      const yTop    = H / 2 - offset;
+      const yBottom = H / 2 + offset;
+      for (const y of [yTop, yBottom]) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`${db}`, 3, yTop);
+    } else {
+      const y = H * (1 - norm);
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`${db}`, 3, y - 1);
+    }
+  }
+  ctx.restore();
+}
+
 function initPeaks(count) {
   peakValues = new Float32Array(count);
   peakDecay  = new Int32Array(count);
@@ -81,11 +118,7 @@ function initPeaks(count) {
 function drawIdle() {
   ctx.fillStyle = '#150a02';
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = '#2a1508';
-  ctx.lineWidth = 1;
-  for (let y = 0; y < H; y += 40) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-  }
+  drawDbScale('bars');
 }
 
 drawIdle();
@@ -93,11 +126,6 @@ drawIdle();
 function drawBars(dataArray) {
   ctx.fillStyle = '#150a02';
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = '#2a1508';
-  ctx.lineWidth = 1;
-  for (let y = 0; y < H; y += 44) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-  }
 
   const mode     = modeSelect.value;
   const usedBins = Math.floor(dataArray.length * 0.75);
@@ -146,6 +174,9 @@ function drawBars(dataArray) {
     }
   }
 
+  // Draw dB scale on top of bars so labels are always legible
+  drawDbScale(mode);
+
   peakLabel.textContent = `Peak: ${Math.round((peak / 255) * 100)}%`;
 }
 
@@ -156,13 +187,16 @@ function render() {
   if (modeSelect.value === 'wave') {
     const td = new Uint8Array(analyser.fftSize);
     analyser.getByteTimeDomainData(td);
-    ctx.fillStyle = '#0a0a0f';
+    ctx.fillStyle = '#150a02';
     ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = '#111122';
+    // Zero-crossing reference line
+    ctx.strokeStyle = '#5a2e0e';
     ctx.lineWidth = 1;
-    for (let y = 0; y < H; y += 44) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    }
+    ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
+    ctx.font = '9px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = '#9a6830';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('0', 3, H / 2 - 1);
     ctx.lineWidth   = 2;
     ctx.strokeStyle = '#d4901a';
     ctx.shadowColor = '#c87010';
