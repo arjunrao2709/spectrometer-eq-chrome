@@ -255,7 +255,12 @@ btn.addEventListener('click', () => capturing ? stopCapture() : startCapture());
 
 // ─── EQ: Helpers ──────────────────────────────────────────────────────────────
 const clamp     = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-const angleToDb = a => MIN_DB + (a - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE) * (MAX_DB - MIN_DB);
+// Two-segment mapping so 12 o'clock (0°) is always 0 dB (unity gain):
+//   CCW half  -150° → 0°  :  MIN_DB (-40 dB) → 0 dB  (cut zone)
+//   CW  half     0° → 150°:    0 dB → MAX_DB (+6 dB)  (boost zone)
+const angleToDb = a => a <= 0
+  ? (a / MIN_ANGLE) * MIN_DB   // 0° = 0 dB, -150° = -40 dB
+  : (a / MAX_ANGLE) * MAX_DB;  // 0° = 0 dB, +150° = +6 dB
 
 function formatDb(db) {
   if (db <= KILL_DB) return 'KILL';
