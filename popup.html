@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Audio Spectrometer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { width: 480px; background: #0a0a0f; font-family: 'Segoe UI', system-ui, sans-serif; color: #ccc; overflow: hidden; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 8px; border-bottom: 1px solid #1e1e2e; }
+    .title { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #a0a0c0; }
+    .controls { display: flex; gap: 8px; align-items: center; }
+    select { background: #16162a; border: 1px solid #2e2e4e; color: #a0a0c0; font-size: 11px; padding: 3px 6px; border-radius: 4px; cursor: pointer; outline: none; }
+    select:hover { border-color: #5555aa; }
+    #btn-capture { background: #3a3a7a; color: #c0c0ff; border: none; border-radius: 5px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; letter-spacing: 0.04em; transition: background 0.15s; }
+    #btn-capture:hover { background: #5050aa; }
+    #btn-capture.active { background: #aa3060; color: #ffd0e0; }
+    #btn-capture.active:hover { background: #cc3070; }
+    .canvas-wrap { position: relative; }
+    canvas { display: block; }
+    #status { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 13px; color: #555577; text-align: center; pointer-events: none; white-space: nowrap; }
+    .info-bar { display: flex; justify-content: space-between; padding: 5px 14px; font-size: 10px; color: #44446a; border-top: 1px solid #1e1e2e; }
+    #peak-label { color: #6666aa; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="title">Spectrometer</span>
+    <div class="controls">
+      <select id="mode-select">
+        <option value="bars">Bars</option>
+        <option value="wave">Waveform</option>
+        <option value="mirror">Mirror</option>
+      </select>
+      <button id="btn-capture">Start</button>
+    </div>
+  </header>
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="480" height="220"></canvas>
+    <div id="status">Click <strong>Start</strong> to begin capturing audio</div>
+  </div>
+  <div class="info-bar">
+    <span id="peak-label">Peak: —</span>
+    <span id="freq-label">FFT: 2048</span>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
