@@ -32,6 +32,11 @@
     <span id="freq-label">FFT: 2048</span>
   </div>
 
+  <!-- ── VU Meter ──────────────────────────────────────────────────────── -->
+  <div class="vu-wrap">
+    <canvas id="vu-canvas" width="480" height="140"></canvas>
+  </div>
+
   <!-- ── 3-Band Rotary EQ ──────────────────────────────────────────────── -->
   <section class="eq-section">
     <div class="eq-title">3-BAND ROTARY EQ</div>
@@ -43,11 +48,11 @@
         <div class="knob-container">
           <svg class="arc-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
             <path d="M 23.00 69.44 A 34 34 0 1 1 57.00 69.44"
-                  fill="none" stroke="#252525" stroke-width="3.5" stroke-linecap="round"/>
+                  fill="none" stroke="#3d2008" stroke-width="3.5" stroke-linecap="round"/>
             <line x1="40" y1="5" x2="40" y2="13"
-                  stroke="#3a3a3a" stroke-width="2" stroke-linecap="round"/>
+                  stroke="#7a4c20" stroke-width="2" stroke-linecap="round"/>
             <path id="arc-fill-high" d=""
-                  fill="none" stroke="#ff6633" stroke-width="3.5" stroke-linecap="round"/>
+                  fill="none" stroke="#cc6633" stroke-width="3.5" stroke-linecap="round"/>
           </svg>
           <div class="knob-body" id="knob-body-high">
             <div class="knob-pip high-pip"></div>
@@ -63,11 +68,11 @@
         <div class="knob-container">
           <svg class="arc-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
             <path d="M 23.00 69.44 A 34 34 0 1 1 57.00 69.44"
-                  fill="none" stroke="#252525" stroke-width="3.5" stroke-linecap="round"/>
+                  fill="none" stroke="#3d2008" stroke-width="3.5" stroke-linecap="round"/>
             <line x1="40" y1="5" x2="40" y2="13"
-                  stroke="#3a3a3a" stroke-width="2" stroke-linecap="round"/>
+                  stroke="#7a4c20" stroke-width="2" stroke-linecap="round"/>
             <path id="arc-fill-mid" d=""
-                  fill="none" stroke="#ffcc00" stroke-width="3.5" stroke-linecap="round"/>
+                  fill="none" stroke="#cc9922" stroke-width="3.5" stroke-linecap="round"/>
           </svg>
           <div class="knob-body" id="knob-body-mid">
             <div class="knob-pip mid-pip"></div>
@@ -83,11 +88,11 @@
         <div class="knob-container">
           <svg class="arc-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
             <path d="M 23.00 69.44 A 34 34 0 1 1 57.00 69.44"
-                  fill="none" stroke="#252525" stroke-width="3.5" stroke-linecap="round"/>
+                  fill="none" stroke="#3d2008" stroke-width="3.5" stroke-linecap="round"/>
             <line x1="40" y1="5" x2="40" y2="13"
-                  stroke="#3a3a3a" stroke-width="2" stroke-linecap="round"/>
+                  stroke="#7a4c20" stroke-width="2" stroke-linecap="round"/>
             <path id="arc-fill-low" d=""
-                  fill="none" stroke="#3399ff" stroke-width="3.5" stroke-linecap="round"/>
+                  fill="none" stroke="#5599bb" stroke-width="3.5" stroke-linecap="round"/>
           </svg>
           <div class="knob-body" id="knob-body-low">
             <div class="knob-pip low-pip"></div>
