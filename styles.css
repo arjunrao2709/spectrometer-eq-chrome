@@ -1,17 +1,14 @@
 /* ── Reset ─────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Body — matte black panel with warm oak side trim (Ecler WARM2 style) ──── */
+/* ── Body ───────────────────────────────────────────────────────────────────── */
 body {
   width: 100%;
-  background: #161616;
-  color: #c8c5c0;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0d0d0d;
+  color: #888;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Mono', monospace;
   user-select: none;
   overflow-x: hidden;
-  /* Simulates the visible wood side panels of the Ecler mixer */
-  border-left:  7px solid #8a5828;
-  border-right: 7px solid #8a5828;
 }
 
 /* ── Header ────────────────────────────────────────────────────────────────── */
@@ -19,18 +16,17 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 14px 8px;
-  background: #111111;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 1px 6px rgba(0,0,0,0.8);
+  padding: 10px 16px;
+  background: #0d0d0d;
+  border-bottom: 1px solid #1e1e1e;
 }
 
 .title {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 400;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #b8b8b8;
+  color: #444;
 }
 
 /* ── Header Controls ───────────────────────────────────────────────────────── */
@@ -41,42 +37,44 @@ header {
 }
 
 select {
-  background: #1a1a1a;
-  border: 1px solid rgba(255,255,255,0.12);
-  color: #909090;
-  font-size: 11px;
+  background: transparent;
+  border: 1px solid #222;
+  color: #666;
+  font-size: 10px;
+  font-family: inherit;
   padding: 3px 6px;
   border-radius: 2px;
   cursor: pointer;
   outline: none;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-select:hover { border-color: rgba(255,255,255,0.28); }
+select:hover { border-color: #333; color: #888; }
 
 #btn-capture {
-  background: #252525;
-  color: #b0b0b0;
-  border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 3px;
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  letter-spacing: 0.04em;
-  transition: background 0.15s;
+  background: transparent;
+  color: #555;
+  border: 1px solid #222;
+  border-radius: 2px;
+  padding: 3px 10px;
+  font-size: 10px;
   font-family: inherit;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.7);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
 }
 
-#btn-capture:hover         { background: #323232; color: #d0d0d0; }
-#btn-capture.active        { background: #2e1010; color: #e08080; border-color: rgba(180,50,50,0.35); }
-#btn-capture.active:hover  { background: #3a1414; }
+#btn-capture:hover        { border-color: #383838; color: #999; }
+#btn-capture.active       { color: #e06060; border-color: #3a1515; }
+#btn-capture.active:hover { color: #f07070; border-color: #4a2020; }
 
 /* ── Canvas Wrap ───────────────────────────────────────────────────────────── */
 .canvas-wrap {
   position: relative;
   width: 100%;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid #1a1a1a;
 }
 
 #canvas {
@@ -90,34 +88,34 @@ select:hover { border-color: rgba(255,255,255,0.28); }
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 13px;
-  color: #383838;
+  font-size: 11px;
+  color: #2a2a2a;
   text-align: center;
   pointer-events: none;
   white-space: nowrap;
+  letter-spacing: 0.06em;
 }
 
 /* ── Info Bar ──────────────────────────────────────────────────────────────── */
 .info-bar {
   display: flex;
   justify-content: space-between;
-  padding: 5px 14px;
-  font-size: 10px;
-  color: #484848;
-  background: #111111;
-  border-top: 1px solid rgba(255,255,255,0.03);
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+  padding: 4px 16px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: #2e2e2e;
+  background: #0d0d0d;
+  border-bottom: 1px solid #1a1a1a;
 }
 
-#peak-label { color: #606060; }
+#peak-label { color: #3a3a3a; }
 
 /* ── VU Meter ──────────────────────────────────────────────────────────────── */
 .vu-wrap {
   position: relative;
   width: 100%;
-  background: #111111;
-  border-top: 1px solid rgba(255,255,255,0.04);
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  background: #0d0d0d;
+  border-bottom: 1px solid #1a1a1a;
 }
 
 #vu-canvas {
@@ -126,20 +124,19 @@ select:hover { border-color: rgba(255,255,255,0.28); }
   height: auto;
 }
 
-/* ── EQ Section — raised black panel with oak accent stripe ────────────────── */
+/* ── EQ Section ────────────────────────────────────────────────────────────── */
 .eq-section {
-  padding: 14px 10px 14px;
-  background: #161616;
-  border-top: 3px solid #8a5828;
-  box-shadow: inset 0 3px 10px rgba(0,0,0,0.5);
+  padding: 16px 10px 14px;
+  background: #0d0d0d;
+  border-top: 1px solid #1e1e1e;
 }
 
 .eq-title {
   text-align: center;
   font-size: 7px;
-  letter-spacing: 4px;
-  color: #363636;
-  margin-bottom: 12px;
+  letter-spacing: 5px;
+  color: #282828;
+  margin-bottom: 14px;
   text-transform: uppercase;
 }
 
@@ -159,15 +156,12 @@ select:hover { border-color: rgba(255,255,255,0.28); }
 }
 
 .band-name {
-  font-size: 9px;
-  letter-spacing: 3px;
-  font-weight: 600;
+  font-size: 8px;
+  letter-spacing: 4px;
+  font-weight: 400;
   text-transform: uppercase;
+  color: #333;
 }
-
-.band-name.high { color: #c05030; }
-.band-name.mid  { color: #b89020; }
-.band-name.low  { color: #4880c0; }
 
 /* ── Knob Container ────────────────────────────────────────────────────────── */
 .knob-container {
@@ -186,11 +180,7 @@ select:hover { border-color: rgba(255,255,255,0.28); }
   pointer-events: none;
 }
 
-/* ── Knob Body — brushed silver / anodized aluminum (Ecler-style) ──────────── */
-/*
- * Large dome with a bright highlight at 10 o'clock, rolling off to a dark edge.
- * Matches the big silver knobs on the Ecler WARM2.
- */
+/* ── Knob Body — flat dark disk ─────────────────────────────────────────────── */
 .knob-body {
   position: absolute;
   top: 14px;
@@ -198,35 +188,33 @@ select:hover { border-color: rgba(255,255,255,0.28); }
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: radial-gradient(ellipse at 36% 28%, #e0e0e0 0%, #949494 46%, #3a3a3a 100%);
-  border: 2px solid #505050;
-  box-shadow:
-    0 5px 16px rgba(0, 0, 0, 0.95),
-    inset 0 1px 3px rgba(255, 255, 255, 0.4),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.6);
+  background: #181818;
+  border: 1px solid #2a2a2a;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.8);
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 5px;
+  padding-top: 6px;
   transform: rotate(0deg);
   pointer-events: none;
 }
 
-/* ── Pip — white position dot (like the Ecler's white indicator) ───────────── */
+/* ── Pip — small indicator line ─────────────────────────────────────────────── */
 .knob-pip {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
+  width: 2px;
+  height: 8px;
+  border-radius: 1px;
+  background: #606060;
 }
 
-.high-pip { background: #ffffff; box-shadow: 0 0 4px rgba(255,255,255,0.9); }
-.mid-pip  { background: #ffffff; box-shadow: 0 0 4px rgba(255,255,255,0.9); }
-.low-pip  { background: #ffffff; box-shadow: 0 0 4px rgba(255,255,255,0.9); }
+.high-pip { background: #c05050; }
+.mid-pip  { background: #a08830; }
+.low-pip  { background: #4070b8; }
 
 /* ── dB Value Display ──────────────────────────────────────────────────────── */
 .db-value {
-  font-size: 10px;
-  color: #484848;
+  font-size: 9px;
+  color: #383838;
   letter-spacing: 1px;
   min-width: 68px;
   text-align: center;
@@ -235,13 +223,12 @@ select:hover { border-color: rgba(255,255,255,0.28); }
 
 .db-value.kill {
   color: #cc3322;
-  text-shadow: 0 0 6px rgba(200,50,30,0.4);
 }
 
 /* ── Frequency Label ───────────────────────────────────────────────────────── */
 .freq-label {
   font-size: 8px;
-  color: #363636;
+  color: #262626;
   letter-spacing: 1px;
 }
 
@@ -249,8 +236,8 @@ select:hover { border-color: rgba(255,255,255,0.28); }
 .hint {
   display: block;
   text-align: center;
-  font-size: 9px;
-  color: #2c2c2c;
+  font-size: 8px;
+  color: #222;
   letter-spacing: 0.3px;
-  margin-top: 10px;
+  margin-top: 12px;
 }
