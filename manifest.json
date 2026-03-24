@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Spectrometer EQ",
-  "version": "1.0",
+  "version": "2.0",
   "description": "Real-time tab audio spectrum analyzer with DJ rotary mixer 3-band EQ.",
   "permissions": [
     "tabCapture",
