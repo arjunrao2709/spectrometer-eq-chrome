@@ -7,103 +7,66 @@
 </head>
 <body>
 
-  <!-- ── Header ────────────────────────────────────────────────────────── -->
+  <!-- ── Header ────────────────────────────────────────────────────────────── -->
   <header>
-    <span class="title">Spectrometer EQ</span>
-    <div class="controls">
-      <select id="mode-select">
-        <option value="bars">Bars</option>
-        <option value="wave">Waveform</option>
-        <option value="mirror">Mirror</option>
-      </select>
-      <button id="btn-capture">Start</button>
+    <div class="seg-control" id="mode-seg">
+      <button class="seg-btn active" data-value="bars">Bars</button>
+      <button class="seg-btn" data-value="wave">Wave</button>
     </div>
+    <button id="btn-capture">Start</button>
   </header>
 
-  <!-- ── Spectrum Canvas ───────────────────────────────────────────────── -->
+  <!-- ── Spectrum Canvas ───────────────────────────────────────────────────── -->
   <div class="canvas-wrap">
     <canvas id="canvas" width="480" height="200"></canvas>
     <div id="status">Click <strong>Start</strong> to begin capturing tab audio</div>
   </div>
 
-  <!-- ── Info Bar ──────────────────────────────────────────────────────── -->
+  <!-- ── Info Bar ──────────────────────────────────────────────────────────── -->
   <div class="info-bar">
+    <span class="app-label">SPECTROMETER EQ</span>
     <span id="peak-label">Peak: —</span>
-    <span id="freq-label">FFT: 2048</span>
   </div>
 
-  <!-- ── VU Meter ──────────────────────────────────────────────────────── -->
-  <div class="vu-wrap">
-    <canvas id="vu-canvas" width="480" height="140"></canvas>
-  </div>
-
-  <!-- ── 3-Band Rotary EQ ──────────────────────────────────────────────── -->
+  <!-- ── 3-Band Vertical Slider EQ ─────────────────────────────────────────── -->
   <section class="eq-section">
-    <div class="eq-title">3-BAND ROTARY EQ</div>
     <div class="eq-row">
 
-      <!-- HIGH band -->
-      <div class="knob-wrap" data-band="high">
-        <div class="band-name high">HIGH</div>
-        <div class="knob-container">
-          <svg class="arc-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-            <path d="M 23.00 69.44 A 34 34 0 1 1 57.00 69.44"
-                  fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="3.5" stroke-linecap="round"/>
-            <line x1="40" y1="5" x2="40" y2="13"
-                  stroke="rgba(255,255,255,0.18)" stroke-width="2" stroke-linecap="round"/>
-            <path id="arc-fill-high" d=""
-                  fill="none" stroke="#e05838" stroke-width="3.5" stroke-linecap="round"/>
-          </svg>
-          <div class="knob-body" id="knob-body-high">
-            <div class="knob-pip high-pip"></div>
-          </div>
+      <!-- HIGH -->
+      <div class="band-wrap" data-band="high">
+        <div class="db-value" id="db-high">+0.0</div>
+        <div class="slider-track" id="track-high">
+          <div class="slider-thumb" id="thumb-high"></div>
+          <div class="slider-pip high-pip"></div>
         </div>
-        <div class="db-value" id="db-high">0.0 dB</div>
+        <div class="band-label high">High</div>
         <div class="freq-label">3.2 kHz</div>
       </div>
 
-      <!-- MID band -->
-      <div class="knob-wrap" data-band="mid">
-        <div class="band-name mid">MID</div>
-        <div class="knob-container">
-          <svg class="arc-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-            <path d="M 23.00 69.44 A 34 34 0 1 1 57.00 69.44"
-                  fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="3.5" stroke-linecap="round"/>
-            <line x1="40" y1="5" x2="40" y2="13"
-                  stroke="rgba(255,255,255,0.18)" stroke-width="2" stroke-linecap="round"/>
-            <path id="arc-fill-mid" d=""
-                  fill="none" stroke="#c89a18" stroke-width="3.5" stroke-linecap="round"/>
-          </svg>
-          <div class="knob-body" id="knob-body-mid">
-            <div class="knob-pip mid-pip"></div>
-          </div>
+      <!-- MID -->
+      <div class="band-wrap" data-band="mid">
+        <div class="db-value" id="db-mid">+0.0</div>
+        <div class="slider-track" id="track-mid">
+          <div class="slider-thumb" id="thumb-mid"></div>
+          <div class="slider-pip mid-pip"></div>
         </div>
-        <div class="db-value" id="db-mid">0.0 dB</div>
+        <div class="band-label mid">Mid</div>
         <div class="freq-label">1.0 kHz</div>
       </div>
 
-      <!-- LOW band -->
-      <div class="knob-wrap" data-band="low">
-        <div class="band-name low">LOW</div>
-        <div class="knob-container">
-          <svg class="arc-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-            <path d="M 23.00 69.44 A 34 34 0 1 1 57.00 69.44"
-                  fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="3.5" stroke-linecap="round"/>
-            <line x1="40" y1="5" x2="40" y2="13"
-                  stroke="rgba(255,255,255,0.18)" stroke-width="2" stroke-linecap="round"/>
-            <path id="arc-fill-low" d=""
-                  fill="none" stroke="#4888cc" stroke-width="3.5" stroke-linecap="round"/>
-          </svg>
-          <div class="knob-body" id="knob-body-low">
-            <div class="knob-pip low-pip"></div>
-          </div>
+      <!-- LOW -->
+      <div class="band-wrap" data-band="low">
+        <div class="db-value" id="db-low">+0.0</div>
+        <div class="slider-track" id="track-low">
+          <div class="slider-thumb" id="thumb-low"></div>
+          <div class="slider-pip low-pip"></div>
         </div>
-        <div class="db-value" id="db-low">0.0 dB</div>
+        <div class="band-label low">Low</div>
         <div class="freq-label">320 Hz</div>
       </div>
 
-    </div><!-- .eq-row -->
-    <span class="hint">↕ drag knobs &nbsp;·&nbsp; scroll to trim &nbsp;·&nbsp; double-click to reset</span>
+    </div>
+    <span class="hint">↕ drag · scroll · double-click to reset</span>
   </section>
 
   <script src="popup.js"></script>

@@ -1,13 +1,11 @@
 'use strict';
 
-// ─── EQ Band Definitions (DJ Rotary Mixer) ────────────────────────────────────
+// ─── EQ Band Definitions ───────────────────────────────────────────────────────
 //
-// Three biquad filters modelled on a DJ rotary mixer:
+// THREE biquad filters modelled on a DJ mixer:
 //   HIGH  – highshelf  @ 3.2 kHz
-//   MID   – peaking    @ 1.0 kHz  (Q = 0.7, ~one-octave width)
+//   MID   – peaking    @ 1.0 kHz  (Q = 0.7)
 //   LOW   – lowshelf   @ 320 Hz
-//
-// Knob range: −150° (kill / −40 dB) to +150° (+6 dB). 12 o'clock = 0 dB.
 //
 const BANDS = [
   { id: 'high', type: 'highshelf', freq: 3200, q: null },
@@ -15,41 +13,70 @@ const BANDS = [
   { id: 'low',  type: 'lowshelf',  freq: 320,  q: null },
 ];
 
-const MIN_ANGLE = -150;
-const MAX_ANGLE =  150;
-const MIN_DB    =  -40;
-const MAX_DB    =    6;
-const KILL_DB   =  -30;
+const MIN_DB  = -40;
+const MAX_DB  =   6;
+const KILL_DB = -30;
 
-// ─── DOM References ───────────────────────────────────────────────────────────
-const canvas     = document.getElementById('canvas');
-const ctx        = canvas.getContext('2d');
-const vuCanvas   = document.getElementById('vu-canvas');
-const vuCtx      = vuCanvas.getContext('2d');
-const btn        = document.getElementById('btn-capture');
-const statusEl   = document.getElementById('status');
-const peakLabel  = document.getElementById('peak-label');
-const modeSelect = document.getElementById('mode-select');
+// ─── Slider Geometry (must match CSS) ─────────────────────────────────────────
+// Track height: 160px  Thumb height: 30px  Available drag range: 130px
+// Two-segment mapping (centre = 0 dB):
+//   top (thumbY=0)      → +6 dB (MAX_DB)
+//   centre (thumbY=65)  →  0 dB
+//   bottom (thumbY=130) → −40 dB (MIN_DB / kill)
+const TRACK_H  = 160;
+const THUMB_H  = 30;
+const RANGE    = TRACK_H - THUMB_H;   // 130 px
+const CENTER   = RANGE / 2;           // 65 px (= 0 dB)
 
-const W  = canvas.width;
-const H  = canvas.height;
-const VW = vuCanvas.width;   // 480
-const VH = vuCanvas.height;  // 140
+function thumbTopToDb(top) {
+  const t = Math.max(0, Math.min(RANGE, top));
+  return t <= CENTER
+    ? (1 - t / CENTER) * MAX_DB          // 0 → +6, CENTER → 0
+    : -((t - CENTER) / CENTER) * (-MIN_DB); // CENTER → 0, RANGE → −40
+}
 
-// ─── Audio State ──────────────────────────────────────────────────────────────
+function dbToThumbTop(db) {
+  return db >= 0
+    ? (1 - db / MAX_DB) * CENTER
+    : CENTER + ((-db) / (-MIN_DB)) * CENTER;
+}
+
+// ─── DOM References ────────────────────────────────────────────────────────────
+const canvas    = document.getElementById('canvas');
+const ctx       = canvas.getContext('2d');
+const btn       = document.getElementById('btn-capture');
+const statusEl  = document.getElementById('status');
+const peakLabel = document.getElementById('peak-label');
+const modeSeg   = document.getElementById('mode-seg');
+
+const W = canvas.width;
+const H = canvas.height;
+
+let currentMode = 'bars'; // 'bars' | 'wave'
+
+// ─── Segmented Control ─────────────────────────────────────────────────────────
+modeSeg.querySelectorAll('.seg-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    modeSeg.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.value;
+    if (!capturing) drawIdle();
+  });
+});
+
+// ─── Audio State ───────────────────────────────────────────────────────────────
 let audioCtx  = null;
 let analyser  = null;
 let animId    = null;
 let stream    = null;
 let capturing = false;
 
-// EQ filter nodes — populated in startCapture(), cleared in stopCapture()
 const filters = {};
 
-// Current knob positions (degrees) — preserved across start/stop cycles
-const angles = { high: 0, mid: 0, low: 0 };
+// Current slider thumb positions (px from top of track), preserved across start/stop
+const thumbTops = { high: CENTER, mid: CENTER, low: CENTER };
 
-// ─── Spectrum: Gradients & Peaks ─────────────────────────────────────────────
+// ─── Spectrum: Gradients & Peaks ──────────────────────────────────────────────
 let barGradient    = null;
 let mirrorGradient = null;
 let peakValues     = null;
@@ -59,232 +86,34 @@ const PEAK_HOLD_FRAMES = 30;
 const PEAK_DECAY_RATE  = 1.5;
 
 function buildGradients() {
-  // LED level-meter colour ramp: green (quiet) → yellow → red (clip)
   barGradient = ctx.createLinearGradient(0, H, 0, 0);
-  barGradient.addColorStop(0.0,  '#0a1a0a');
-  barGradient.addColorStop(0.5,  '#18a818');
+  barGradient.addColorStop(0.0, '#0a1a0a');
+  barGradient.addColorStop(0.5, '#18a818');
   barGradient.addColorStop(0.75, '#d4b010');
-  barGradient.addColorStop(0.9,  '#e05010');
-  barGradient.addColorStop(1.0,  '#cc1010');
-
-  mirrorGradient = ctx.createLinearGradient(0, 0, 0, H);
-  mirrorGradient.addColorStop(0.0, '#cc1010');
-  mirrorGradient.addColorStop(0.2, '#e05010');
-  mirrorGradient.addColorStop(0.5, '#18a818');
-  mirrorGradient.addColorStop(1.0, '#0a1a0a');
+  barGradient.addColorStop(0.9, '#e05010');
+  barGradient.addColorStop(1.0, '#cc1010');
 }
 
 buildGradients();
 
-// ─── VU Meter ─────────────────────────────────────────────────────────────────
-//
-// Classic analog VU meter with ballistic needle.
-// Scale: -20 VU to +3 VU  (0 VU ≈ -18 dBFS for digital audio)
-// Zones: green (-20→0), amber (0→+2), red (+2→+3)
-//
-
-const VU_CX  = VW / 2;   // needle pivot — horizontal centre
-const VU_CY  = VH - 12;  // needle pivot — near bottom of canvas
-const VU_R   = 108;       // scale arc radius
-const VU_AW  = 14;        // arc band stroke width
-
-// Map VU value to angle (degrees from 12 o'clock, + = CW).
-// Two-segment: -20→0 VU spans 100°; 0→+3 VU spans 30°.
-function vuAngleDeg(vu) {
-  return vu <= 0 ? -65 + (vu + 20) * 5 : 35 + vu * 10;
-}
-function vuAngleRad(vu) {
-  return (vuAngleDeg(vu) - 90) * Math.PI / 180;
-}
-
-let vuCurrent  = -20;   // currently displayed VU level (animated)
-let vuTarget   = -20;   // target level set each render frame
-let vuFaceData = null;  // cached ImageData of the static meter face
-
-const VU_MARKS = [
-  { vu: -20, label: '-20', major: true  },
-  { vu: -10, label: '-10', major: true  },
-  { vu:  -7, label: '-7',  major: false },
-  { vu:  -5, label: '-5',  major: true  },
-  { vu:  -3, label: '-3',  major: false },
-  { vu:  -2, label: '-2',  major: false },
-  { vu:  -1, label: '',    major: false },
-  { vu:   0, label: '0',   major: true  },
-  { vu:  +1, label: '',    major: false },
-  { vu:  +2, label: '+2',  major: false },
-  { vu:  +3, label: '+3',  major: true  },
-];
-
-function drawVuFace() {
-  const c = vuCtx;
-
-  // ── Outer frame: dark anodized panel ───────────────────────────────────────
-  c.fillStyle = '#1e1c18';
-  c.fillRect(0, 0, VW, VH);
-
-  // Subtle inset panel border
-  c.strokeStyle = 'rgba(255,255,255,0.1)';
-  c.lineWidth   = 1;
-  c.strokeRect(14, 5, VW - 28, VH - 12);
-
-  // ── Coloured scale arc bands ────────────────────────────────────────────────
-  // Dim track groove (full sweep)
-  c.lineCap     = 'butt';
-  c.lineWidth   = VU_AW;
-  c.strokeStyle = '#242424';
-  c.beginPath();
-  c.arc(VU_CX, VU_CY, VU_R, vuAngleRad(-20), vuAngleRad(3), false);
-  c.stroke();
-
-  // Green zone: -20 → 0 VU
-  c.strokeStyle = '#1aaa18';
-  c.beginPath();
-  c.arc(VU_CX, VU_CY, VU_R, vuAngleRad(-20), vuAngleRad(0), false);
-  c.stroke();
-
-  // Amber zone: 0 → +2 VU
-  c.strokeStyle = '#e8a010';
-  c.beginPath();
-  c.arc(VU_CX, VU_CY, VU_R, vuAngleRad(0), vuAngleRad(2), false);
-  c.stroke();
-
-  // Red zone: +2 → +3 VU
-  c.strokeStyle = '#e82010';
-  c.beginPath();
-  c.arc(VU_CX, VU_CY, VU_R, vuAngleRad(2), vuAngleRad(3), false);
-  c.stroke();
-
-  // ── Tick marks and labels ───────────────────────────────────────────────────
-  c.lineCap = 'round';
-  for (const m of VU_MARKS) {
-    const a   = vuAngleRad(m.vu);
-    const cos = Math.cos(a);
-    const sin = Math.sin(a);
-    const rOuter = VU_R + 6;
-    const rInner = m.major ? VU_R - VU_AW - 10 : VU_R - VU_AW - 6;
-
-    c.strokeStyle = m.vu >= 0 ? 'rgba(232,50,20,0.9)' : 'rgba(200,200,200,0.7)';
-    c.lineWidth   = m.major ? 1.5 : 1;
-    c.beginPath();
-    c.moveTo(VU_CX + rInner * cos, VU_CY + rInner * sin);
-    c.lineTo(VU_CX + rOuter * cos, VU_CY + rOuter * sin);
-    c.stroke();
-
-    if (m.label) {
-      const rL = VU_R - VU_AW - 24;
-      c.font         = `${m.major ? 'bold ' : ''}${m.major ? 9 : 8}px "Segoe UI", system-ui, sans-serif`;
-      c.fillStyle    = m.vu >= 0 ? 'rgba(232,100,80,0.95)' : 'rgba(180,180,180,0.85)';
-      c.textAlign    = 'center';
-      c.textBaseline = 'middle';
-      c.fillText(m.label, VU_CX + rL * cos, VU_CY + rL * sin);
-    }
-  }
-
-  // ── "VU" label ──────────────────────────────────────────────────────────────
-  c.font         = 'bold 10px "Segoe UI", system-ui, sans-serif';
-  c.fillStyle    = 'rgba(160,160,160,0.7)';
-  c.textAlign    = 'center';
-  c.textBaseline = 'middle';
-  c.fillText('VU', VU_CX + 38, VU_CY - 16);
-
-  // ── Corner screws (dark machine screws) ─────────────────────────────────────
-  for (const [sx, sy] of [
-    [22,      10     ],
-    [VW - 22, 10     ],
-    [22,      VH - 10],
-    [VW - 22, VH - 10],
-  ]) {
-    c.fillStyle   = '#333333';
-    c.strokeStyle = 'rgba(255,255,255,0.12)';
-    c.lineWidth   = 1;
-    c.beginPath(); c.arc(sx, sy, 4, 0, Math.PI * 2); c.fill(); c.stroke();
-    // Phillips slot
-    c.strokeStyle = 'rgba(255,255,255,0.18)';
-    c.lineWidth   = 0.8;
-    c.beginPath(); c.moveTo(sx - 2.2, sy); c.lineTo(sx + 2.2, sy); c.stroke();
-    c.beginPath(); c.moveTo(sx, sy - 2.2); c.lineTo(sx, sy + 2.2); c.stroke();
-  }
-
-  // Cache the static face — putImageData each frame before drawing needle
-  vuFaceData = c.getImageData(0, 0, VW, VH);
-}
-
-function drawVuNeedle() {
-  if (!vuFaceData) return;
-  vuCtx.putImageData(vuFaceData, 0, 0);
-
-  const a   = vuAngleRad(vuCurrent);
-  const cos = Math.cos(a);
-  const sin = Math.sin(a);
-  const nR  = VU_R + 4;
-
-  vuCtx.save();
-  vuCtx.lineCap = 'round';
-
-  // Drop shadow
-  vuCtx.strokeStyle = 'rgba(0,0,0,0.5)';
-  vuCtx.lineWidth   = 3;
-  vuCtx.beginPath();
-  vuCtx.moveTo(VU_CX + 1.5, VU_CY + 1.5);
-  vuCtx.lineTo(VU_CX + 1.5 + nR * cos, VU_CY + 1.5 + nR * sin);
-  vuCtx.stroke();
-
-  // Needle — bright silver
-  vuCtx.strokeStyle = '#d8d8d8';
-  vuCtx.lineWidth   = 1.5;
-  vuCtx.beginPath();
-  vuCtx.moveTo(VU_CX, VU_CY);
-  vuCtx.lineTo(VU_CX + nR * cos, VU_CY + nR * sin);
-  vuCtx.stroke();
-
-  vuCtx.restore();
-
-  // Pivot
-  vuCtx.fillStyle   = '#888888';
-  vuCtx.strokeStyle = 'rgba(255,255,255,0.2)';
-  vuCtx.lineWidth   = 1;
-  vuCtx.beginPath();
-  vuCtx.arc(VU_CX, VU_CY, 5, 0, Math.PI * 2);
-  vuCtx.fill();
-  vuCtx.stroke();
-}
-
-drawVuFace();
-drawVuNeedle();
-
 // ─── dB Scale ─────────────────────────────────────────────────────────────────
-// Must match analyser.minDecibels / maxDecibels set during startCapture().
 const SPEC_MIN_DB = -90;
 const SPEC_MAX_DB = -10;
-const DB_LEVELS   = [-80, -60, -40, -20]; // dB markers to display
+const DB_LEVELS   = [-80, -60, -40, -20];
 
-// Draws horizontal reference lines with dB labels over the frequency spectrum.
-// mode: 'bars' | 'mirror'
-function drawDbScale(mode) {
+function drawDbScale() {
   ctx.save();
   ctx.font        = '9px "Segoe UI", system-ui, sans-serif';
   ctx.lineWidth   = 1;
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-  ctx.fillStyle   = '#606060';
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillStyle   = 'rgba(255,255,255,0.22)';
 
   for (const db of DB_LEVELS) {
-    const norm = (db - SPEC_MIN_DB) / (SPEC_MAX_DB - SPEC_MIN_DB); // 0 → bottom, 1 → top
-
-    if (mode === 'mirror') {
-      const offset  = norm * (H / 2);
-      const yTop    = H / 2 - offset;
-      const yBottom = H / 2 + offset;
-      for (const y of [yTop, yBottom]) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-      }
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(`${db}`, 3, yTop);
-    } else {
-      const y = H * (1 - norm);
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(`${db}`, 3, y - 1);
-    }
+    const norm = (db - SPEC_MIN_DB) / (SPEC_MAX_DB - SPEC_MIN_DB);
+    const y    = H * (1 - norm);
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`${db}`, 4, y - 1);
   }
   ctx.restore();
 }
@@ -294,20 +123,19 @@ function initPeaks(count) {
   peakDecay  = new Int32Array(count);
 }
 
-// ─── Spectrum: Draw Functions ─────────────────────────────────────────────────
+// ─── Spectrum: Draw Functions ──────────────────────────────────────────────────
 function drawIdle() {
-  ctx.fillStyle = '#1a1814';
+  ctx.fillStyle = '#141414';
   ctx.fillRect(0, 0, W, H);
-  drawDbScale('bars');
+  drawDbScale();
 }
 
 drawIdle();
 
 function drawBars(dataArray) {
-  ctx.fillStyle = '#1a1814';
+  ctx.fillStyle = '#141414';
   ctx.fillRect(0, 0, W, H);
 
-  const mode     = modeSelect.value;
   const usedBins = Math.floor(dataArray.length * 0.75);
   const barCount = 96;
   const gap      = 2;
@@ -334,29 +162,15 @@ function drawBars(dataArray) {
     }
 
     const x = gap + i * (barW + gap);
-
-    if (mode === 'mirror') {
-      const halfH = H / 2;
-      ctx.fillStyle = mirrorGradient;
-      ctx.fillRect(x, halfH - barH / 2, barW, barH);
-      if (peakValues[i] > 2) {
-        ctx.fillStyle = 'rgba(255,255,255,0.65)';
-        ctx.fillRect(x, halfH - peakValues[i] / 2 - 1, barW, 2);
-        ctx.fillRect(x, halfH + peakValues[i] / 2 - 1, barW, 2);
-      }
-    } else {
-      ctx.fillStyle = barGradient;
-      ctx.fillRect(x, H - barH, barW, barH);
-      if (peakValues[i] > 2) {
-        ctx.fillStyle = 'rgba(255,255,255,0.75)';
-        ctx.fillRect(x, H - peakValues[i] - 1, barW, 2);
-      }
+    ctx.fillStyle = barGradient;
+    ctx.fillRect(x, H - barH, barW, barH);
+    if (peakValues[i] > 2) {
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.fillRect(x, H - peakValues[i] - 1, barW, 2);
     }
   }
 
-  // Draw dB scale on top of bars so labels are always legible
-  drawDbScale(mode);
-
+  drawDbScale();
   peakLabel.textContent = `Peak: ${Math.round((peak / 255) * 100)}%`;
 }
 
@@ -364,19 +178,18 @@ function render() {
   animId = requestAnimationFrame(render);
   if (!analyser) return;
 
-  if (modeSelect.value === 'wave') {
+  if (currentMode === 'wave') {
     const td = new Uint8Array(analyser.fftSize);
     analyser.getByteTimeDomainData(td);
-    ctx.fillStyle = '#1a1814';
+    ctx.fillStyle = '#141414';
     ctx.fillRect(0, 0, W, H);
-    // Zero-crossing reference line
-    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
     ctx.font = '9px "Segoe UI", system-ui, sans-serif';
-    ctx.fillStyle = '#606060';
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
     ctx.textBaseline = 'bottom';
-    ctx.fillText('0', 3, H / 2 - 1);
+    ctx.fillText('0', 4, H / 2 - 1);
     ctx.lineWidth   = 2;
     ctx.strokeStyle = '#18c848';
     ctx.shadowColor = '#10a030';
@@ -392,45 +205,14 @@ function render() {
     ctx.stroke();
     ctx.shadowBlur = 0;
     peakLabel.textContent = 'Waveform';
-
-    // VU level from time-domain RMS
-    let rmsSum = 0;
-    for (let i = 0; i < td.length; i++) {
-      const s = (td[i] - 128) / 128;
-      rmsSum += s * s;
-    }
-    const rms = Math.sqrt(rmsSum / td.length);
-    vuTarget = Math.max(-20, Math.min(3, (rms > 0 ? 20 * Math.log10(rms) : -90) + 18));
   } else {
     const fd = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(fd);
     drawBars(fd);
-
-    // VU level: average of active frequency bins (above noise floor).
-    // Time-domain RMS maps to -40 dBFS even at "75% peak" due to the
-    // analyser's wide dynamic range, so it always clamps to -20 VU.
-    // Using active-bin average stays in the same dBFS space as the
-    // spectrum display and produces natural needle movement.
-    let binSum = 0, activeCount = 0;
-    for (let i = 0; i < fd.length; i++) {
-      if (fd[i] > 8) { binSum += fd[i]; activeCount++; }
-    }
-    if (activeCount > 0) {
-      const avgByte = binSum / activeCount;
-      const dBFS = SPEC_MIN_DB + (avgByte / 255) * (SPEC_MAX_DB - SPEC_MIN_DB);
-      vuTarget = Math.max(-20, Math.min(3, dBFS + 32));
-    } else {
-      vuTarget = -20;
-    }
   }
-
-  // Ballistic smoothing: fast attack (~35% per frame), slow release (~5%)
-  if (vuTarget > vuCurrent) vuCurrent += (vuTarget - vuCurrent) * 0.35;
-  else                       vuCurrent += (vuTarget - vuCurrent) * 0.05;
-  drawVuNeedle();
 }
 
-// ─── Tab Capture ──────────────────────────────────────────────────────────────
+// ─── Tab Capture ───────────────────────────────────────────────────────────────
 async function startCapture() {
   try {
     statusEl.textContent = 'Requesting audio capture…';
@@ -445,25 +227,22 @@ async function startCapture() {
     audioCtx = new AudioContext();
     const tabSource = audioCtx.createMediaStreamSource(stream);
 
-    // Build the 3-band EQ filter chain, seeding each filter with the
-    // current knob position so EQ state is preserved across start/stop.
     for (const b of BANDS) {
       const f = audioCtx.createBiquadFilter();
       f.type            = b.type;
       f.frequency.value = b.freq;
       if (b.q !== null) f.Q.value = b.q;
-      const db = angleToDb(angles[b.id]);
+      const db = thumbTopToDb(thumbTops[b.id]);
       f.gain.value = db <= KILL_DB ? -40 : db;
       filters[b.id] = f;
     }
 
     analyser = audioCtx.createAnalyser();
-    analyser.fftSize              = 2048;
+    analyser.fftSize               = 2048;
     analyser.smoothingTimeConstant = 0.8;
-    analyser.minDecibels          = -90;
-    analyser.maxDecibels          = -10;
+    analyser.minDecibels           = -90;
+    analyser.maxDecibels           = -10;
 
-    // Signal chain: tab → HIGH filter → MID filter → LOW filter → analyser → speakers
     tabSource.connect(filters.high);
     filters.high.connect(filters.mid);
     filters.mid.connect(filters.low);
@@ -499,108 +278,63 @@ function stopCapture() {
 
 btn.addEventListener('click', () => capturing ? stopCapture() : startCapture());
 
-// ─── EQ: Helpers ──────────────────────────────────────────────────────────────
-const clamp     = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-// Two-segment mapping so 12 o'clock (0°) is always 0 dB (unity gain):
-//   CCW half  -150° → 0°  :  MIN_DB (-40 dB) → 0 dB  (cut zone)
-//   CW  half     0° → 150°:    0 dB → MAX_DB (+6 dB)  (boost zone)
-const angleToDb = a => a <= 0
-  ? (a / MIN_ANGLE) * MIN_DB   // 0° = 0 dB, -150° = -40 dB
-  : (a / MAX_ANGLE) * MAX_DB;  // 0° = 0 dB, +150° = +6 dB
+// ─── EQ: Helpers ───────────────────────────────────────────────────────────────
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 function formatDb(db) {
   if (db <= KILL_DB) return 'KILL';
-  return (db >= 0 ? '+' : '') + db.toFixed(1) + ' dB';
+  return (db >= 0 ? '+' : '') + db.toFixed(1);
 }
 
-// ─── EQ: SVG Arc Path ─────────────────────────────────────────────────────────
-//
-// Arc geometry: cx=40, cy=40, r=34 (inside the 80×80 SVG viewBox).
-// Our 0° = 12 o'clock; SVG 0° = 3 o'clock → convert: svgDeg = knobDeg − 90.
-// Track spans −150° to +150° (300° sweep, gap at the bottom).
-//
-function arcPoint(knobDeg) {
-  const rad = (knobDeg - 90) * Math.PI / 180;
-  return { x: 40 + 34 * Math.cos(rad), y: 40 + 34 * Math.sin(rad) };
-}
-
-function buildArcPath(angle) {
-  const start = arcPoint(MIN_ANGLE);
-  const end   = arcPoint(angle);
-  const sweep = angle - MIN_ANGLE;   // 0 … 300 degrees
-
-  if (sweep < 0.5) {
-    // Kill position — no visible arc
-    return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)}`;
-  }
-
-  const large = sweep > 180 ? 1 : 0;
-  return (
-    `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} ` +
-    `A 34 34 0 ${large} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`
-  );
-}
-
-// ─── EQ: Knob Update ──────────────────────────────────────────────────────────
-function updateKnob(id, angle) {
-  angles[id]   = angle;
-  const db     = angleToDb(angle);
+// ─── EQ: Slider Update ─────────────────────────────────────────────────────────
+function updateSlider(id, top) {
+  const t      = clamp(top, 0, RANGE);
+  const db     = thumbTopToDb(t);
   const isKill = db <= KILL_DB;
 
-  // Rotate the metal knob body
-  document.getElementById(`knob-body-${id}`).style.transform = `rotate(${angle}deg)`;
+  thumbTops[id] = t;
+  document.getElementById(`thumb-${id}`).style.top = `${t}px`;
 
-  // Update the active SVG arc
-  document.getElementById(`arc-fill-${id}`).setAttribute('d', buildArcPath(angle));
-
-  // Update dB readout
   const label = document.getElementById(`db-${id}`);
   label.textContent = formatDb(db);
   label.classList.toggle('kill', isKill);
 
-  // Apply to the live filter (if audio is running)
   if (filters[id]) {
     filters[id].gain.value = isKill ? -40 : db;
   }
 }
 
-// ─── EQ: Drag & Wheel Interaction ─────────────────────────────────────────────
-//
-// Drag vertically on a knob:  up → boost,  down → cut / kill.
-// Sensitivity: 0.8 degrees per pixel.
-// Double-click resets the band to 0 dB (unity).
-//
-let dragBand       = null;
-let dragStartY     = 0;
-let dragStartAngle = 0;
+// ─── EQ: Drag & Wheel Interaction ──────────────────────────────────────────────
+let dragBand     = null;
+let dragStartY   = 0;
+let dragStartTop = 0;
 
-document.querySelectorAll('.knob-wrap').forEach(wrap => {
-  const band = wrap.dataset.band;
+document.querySelectorAll('.band-wrap').forEach(wrap => {
+  const band  = wrap.dataset.band;
+  const track = document.getElementById(`track-${band}`);
 
-  wrap.addEventListener('mousedown', e => {
-    dragBand       = band;
-    dragStartY     = e.clientY;
-    dragStartAngle = angles[band];
+  track.addEventListener('mousedown', e => {
+    dragBand     = band;
+    dragStartY   = e.clientY;
+    dragStartTop = thumbTops[band];
     e.preventDefault();
   });
 
-  wrap.addEventListener('dblclick', () => updateKnob(band, 0));
+  track.addEventListener('dblclick', () => updateSlider(band, CENTER));
 
-  wrap.addEventListener('wheel', e => {
-    const delta = -e.deltaY * 0.5;
-    updateKnob(band, clamp(angles[band] + delta, MIN_ANGLE, MAX_ANGLE));
+  track.addEventListener('wheel', e => {
+    const delta = e.deltaY * 0.4;
+    updateSlider(band, clamp(thumbTops[band] + delta, 0, RANGE));
     e.preventDefault();
   }, { passive: false });
 });
 
 document.addEventListener('mousemove', e => {
   if (!dragBand) return;
-  const delta = (dragStartY - e.clientY) * 0.8;
-  updateKnob(dragBand, clamp(dragStartAngle + delta, MIN_ANGLE, MAX_ANGLE));
+  updateSlider(dragBand, clamp(dragStartTop + (e.clientY - dragStartY), 0, RANGE));
 });
 
 document.addEventListener('mouseup', () => { dragBand = null; });
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-// Render knobs at 0 dB (12 o'clock) on load.
-BANDS.forEach(b => updateKnob(b.id, 0));
+// ─── Init ──────────────────────────────────────────────────────────────────────
+BANDS.forEach(b => updateSlider(b.id, CENTER));
