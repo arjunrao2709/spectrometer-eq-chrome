@@ -1,12 +1,12 @@
 /* ── Reset ─────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Body ───────────────────────────────────────────────────────────────────── */
+/* ── Body — warm anodized graphite, like a premium hardware chassis ─────────── */
 body {
   width: 100%;
-  background: #0d0d0d;
-  color: #888;
-  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Mono', monospace;
+  background: #1d1b19;
+  color: #e8e0d4;
+  font-family: -apple-system, 'SF Pro Display', BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   user-select: none;
   overflow-x: hidden;
 }
@@ -16,17 +16,18 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  background: #0d0d0d;
-  border-bottom: 1px solid #1e1e1e;
+  padding: 11px 16px 10px;
+  background: #23201c;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.5);
 }
 
 .title {
   font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.22em;
+  font-weight: 500;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #444;
+  color: rgba(232,224,212,0.4);
 }
 
 /* ── Header Controls ───────────────────────────────────────────────────────── */
@@ -37,44 +38,42 @@ header {
 }
 
 select {
-  background: transparent;
-  border: 1px solid #222;
-  color: #666;
-  font-size: 10px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(232,224,212,0.6);
+  font-size: 11px;
   font-family: inherit;
-  padding: 3px 6px;
-  border-radius: 2px;
+  padding: 4px 8px;
+  border-radius: 6px;
   cursor: pointer;
   outline: none;
   appearance: none;
   -webkit-appearance: none;
+  transition: background 0.15s, color 0.15s;
 }
-
-select:hover { border-color: #333; color: #888; }
+select:hover { background: rgba(255,255,255,0.12); color: rgba(232,224,212,0.9); }
 
 #btn-capture {
-  background: transparent;
-  color: #555;
-  border: 1px solid #222;
-  border-radius: 2px;
-  padding: 3px 10px;
-  font-size: 10px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(232,224,212,0.65);
+  border: 1px solid rgba(255,255,255,0.11);
+  border-radius: 6px;
+  padding: 4px 13px;
+  font-size: 11px;
   font-family: inherit;
-  font-weight: 400;
-  letter-spacing: 0.08em;
+  font-weight: 500;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  letter-spacing: 0.01em;
+  transition: all 0.15s;
 }
-
-#btn-capture:hover        { border-color: #383838; color: #999; }
-#btn-capture.active       { color: #e06060; border-color: #3a1515; }
-#btn-capture.active:hover { color: #f07070; border-color: #4a2020; }
+#btn-capture:hover         { background: rgba(255,255,255,0.14); color: rgba(232,224,212,1); }
+#btn-capture.active        { background: rgba(210,55,45,0.18); color: #ff7060; border-color: rgba(210,55,45,0.3); }
+#btn-capture.active:hover  { background: rgba(210,55,45,0.26); }
 
 /* ── Canvas Wrap ───────────────────────────────────────────────────────────── */
 .canvas-wrap {
   position: relative;
   width: 100%;
-  border-bottom: 1px solid #1a1a1a;
 }
 
 #canvas {
@@ -88,55 +87,55 @@ select:hover { border-color: #333; color: #888; }
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 11px;
-  color: #2a2a2a;
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(232,224,212,0.18);
   text-align: center;
   pointer-events: none;
   white-space: nowrap;
-  letter-spacing: 0.06em;
 }
 
 /* ── Info Bar ──────────────────────────────────────────────────────────────── */
 .info-bar {
   display: flex;
   justify-content: space-between;
-  padding: 4px 16px;
-  font-size: 9px;
-  letter-spacing: 0.06em;
-  color: #2e2e2e;
-  background: #0d0d0d;
-  border-bottom: 1px solid #1a1a1a;
+  padding: 5px 16px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: rgba(232,224,212,0.28);
+  background: #1a1815;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
-
-#peak-label { color: #3a3a3a; }
+#peak-label { color: rgba(232,224,212,0.32); }
 
 /* ── VU Meter ──────────────────────────────────────────────────────────────── */
 .vu-wrap {
   position: relative;
   width: 100%;
-  background: #0d0d0d;
-  border-bottom: 1px solid #1a1a1a;
+  background: #1a1815;
 }
-
 #vu-canvas {
   display: block;
   width: 100%;
   height: auto;
 }
 
-/* ── EQ Section ────────────────────────────────────────────────────────────── */
+/* ── EQ Section — recessed panel with warm amber top accent ────────────────── */
 .eq-section {
-  padding: 16px 10px 14px;
-  background: #0d0d0d;
-  border-top: 1px solid #1e1e1e;
+  padding: 18px 12px 16px;
+  background: #161411;
+  border-top: 1px solid rgba(205,165,80,0.18);
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.35);
 }
 
 .eq-title {
   text-align: center;
   font-size: 7px;
+  font-weight: 500;
   letter-spacing: 5px;
-  color: #282828;
-  margin-bottom: 14px;
+  color: rgba(210,175,100,0.28);
+  margin-bottom: 16px;
   text-transform: uppercase;
 }
 
@@ -151,17 +150,19 @@ select:hover { border-color: #333; color: #888; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   cursor: ns-resize;
 }
 
 .band-name {
-  font-size: 8px;
-  letter-spacing: 4px;
-  font-weight: 400;
+  font-size: 9px;
+  letter-spacing: 3px;
+  font-weight: 600;
   text-transform: uppercase;
-  color: #333;
 }
+.band-name.high { color: rgba(235,108,68,0.9); }
+.band-name.mid  { color: rgba(215,168,40,0.9); }
+.band-name.low  { color: rgba(75,155,225,0.9); }
 
 /* ── Knob Container ────────────────────────────────────────────────────────── */
 .knob-container {
@@ -173,24 +174,33 @@ select:hover { border-color: #333; color: #888; }
 /* ── Arc SVG ───────────────────────────────────────────────────────────────── */
 .arc-svg {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 80px;
-  height: 80px;
+  top: 0; left: 0;
+  width: 80px; height: 80px;
   pointer-events: none;
 }
 
-/* ── Knob Body — flat dark disk ─────────────────────────────────────────────── */
+/* ── Knob Body — brushed aluminum dome (classic analog hardware) ────────────── */
+/*
+ * Bright elliptical highlight at 10 o'clock rolling off to a dark machined edge.
+ * Evokes the large silver knobs on premium studio and DJ equipment.
+ */
 .knob-body {
   position: absolute;
-  top: 14px;
-  left: 14px;
-  width: 52px;
-  height: 52px;
+  top: 14px; left: 14px;
+  width: 52px; height: 52px;
   border-radius: 50%;
-  background: #181818;
-  border: 1px solid #2a2a2a;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  background: radial-gradient(ellipse at 36% 28%,
+    #dedede 0%,
+    #b4b4b4 28%,
+    #787878 60%,
+    #303030 100%
+  );
+  border: 1.5px solid rgba(255,255,255,0.14);
+  box-shadow:
+    0 5px 16px rgba(0,0,0,0.9),
+    0 1px 4px  rgba(0,0,0,0.6),
+    inset 0 1px 3px rgba(255,255,255,0.38),
+    inset 0 -1px 2px rgba(0,0,0,0.55);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -199,37 +209,36 @@ select:hover { border-color: #333; color: #888; }
   pointer-events: none;
 }
 
-/* ── Pip — small indicator line ─────────────────────────────────────────────── */
+/* ── Pip — glowing indicator dot ───────────────────────────────────────────── */
 .knob-pip {
-  width: 2px;
-  height: 8px;
-  border-radius: 1px;
-  background: #606060;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
 }
-
-.high-pip { background: #c05050; }
-.mid-pip  { background: #a08830; }
-.low-pip  { background: #4070b8; }
+.high-pip { background: #ff7050; box-shadow: 0 0 6px rgba(255,100,60,0.85); }
+.mid-pip  { background: #ffc030; box-shadow: 0 0 6px rgba(255,185,30,0.8);  }
+.low-pip  { background: #55bbff; box-shadow: 0 0 6px rgba(70,165,255,0.8);  }
 
 /* ── dB Value Display ──────────────────────────────────────────────────────── */
 .db-value {
-  font-size: 9px;
-  color: #383838;
-  letter-spacing: 1px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(232,224,212,0.35);
+  letter-spacing: 0.5px;
   min-width: 68px;
   text-align: center;
   transition: color 0.1s;
 }
-
 .db-value.kill {
-  color: #cc3322;
+  color: #ff5040;
+  text-shadow: 0 0 8px rgba(255,55,35,0.55);
 }
 
 /* ── Frequency Label ───────────────────────────────────────────────────────── */
 .freq-label {
   font-size: 8px;
-  color: #262626;
-  letter-spacing: 1px;
+  color: rgba(232,224,212,0.22);
+  letter-spacing: 0.5px;
 }
 
 /* ── Hint ──────────────────────────────────────────────────────────────────── */
@@ -237,7 +246,7 @@ select:hover { border-color: #333; color: #888; }
   display: block;
   text-align: center;
   font-size: 8px;
-  color: #222;
-  letter-spacing: 0.3px;
-  margin-top: 12px;
+  color: rgba(232,224,212,0.14);
+  letter-spacing: 0.2px;
+  margin-top: 14px;
 }
