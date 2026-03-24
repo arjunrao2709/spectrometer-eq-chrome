@@ -406,13 +406,22 @@ function render() {
     analyser.getByteFrequencyData(fd);
     drawBars(fd);
 
-    // VU level from average frequency-bin amplitude
-    let binSum = 0;
-    const usedBinsVu = Math.floor(fd.length * 0.75);
-    for (let i = 0; i < usedBinsVu; i++) binSum += fd[i];
-    const avgByte = binSum / usedBinsVu;
-    const dBFSavg = (avgByte / 255) * (SPEC_MAX_DB - SPEC_MIN_DB) + SPEC_MIN_DB;
-    vuTarget = Math.max(-20, Math.min(3, dBFSavg + 18));
+    // VU level: average of active frequency bins (above noise floor).
+    // Time-domain RMS maps to -40 dBFS even at "75% peak" due to the
+    // analyser's wide dynamic range, so it always clamps to -20 VU.
+    // Using active-bin average stays in the same dBFS space as the
+    // spectrum display and produces natural needle movement.
+    let binSum = 0, activeCount = 0;
+    for (let i = 0; i < fd.length; i++) {
+      if (fd[i] > 8) { binSum += fd[i]; activeCount++; }
+    }
+    if (activeCount > 0) {
+      const avgByte = binSum / activeCount;
+      const dBFS = SPEC_MIN_DB + (avgByte / 255) * (SPEC_MAX_DB - SPEC_MIN_DB);
+      vuTarget = Math.max(-20, Math.min(3, dBFS + 32));
+    } else {
+      vuTarget = -20;
+    }
   }
 
   // Ballistic smoothing: fast attack (~35% per frame), slow release (~5%)
