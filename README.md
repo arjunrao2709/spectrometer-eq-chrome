@@ -1,26 +1,27 @@
 # Spectrometer EQ
 
-A Chrome extension that combines a real-time audio spectrum analyzer with a 3-band rotary EQ modelled on a DJ rotary mixer (e.g. Allen & Heath Xone, Rane MP2015).
+A Chrome extension that captures tab audio and displays a real-time spectrum analyzer with a 3-band EQ.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Manifest](https://img.shields.io/badge/manifest-v3-green.svg)
+![Version](https://img.shields.io/badge/version-2.0-brightgreen.svg)
 ![Platform](https://img.shields.io/badge/platform-Chrome-yellow.svg)
 
 ---
 
 ## Features
 
-- **Real-time spectrum analyzer** — 128 log-scale bars from 20 Hz to 20 kHz, color-coded by frequency band
-- **3-band rotary EQ** — High, Mid, and Low bands with independent control, each styled as a physical rotary knob
-- **Kill switch** — Turning any knob fully counter-clockwise cuts the band to −40 dB (shown as `KILL`)
-- **Two input modes** — Load an audio file (EQ applied to playback) or use the microphone (analysis only)
-- **Crossover markers** — Visual guides at 320 Hz and 3.2 kHz separating the three bands in the spectrum display
+- **Real-time spectrum analyzer** — 96 log-scale bars from 20 Hz to 20 kHz, color-coded green → yellow → red
+- **3-band parametric EQ** — High, Mid, and Low bands controlled via vertical sliders
+- **Kill switch** — Dragging any slider to the bottom cuts the band to −40 dB (shown as `KILL`)
+- **Two display modes** — Bars (frequency spectrum) and Wave (time-domain waveform)
+- **Side panel UI** — Opens as a persistent Chrome side panel, stays visible while you browse
 
 ---
 
 ## EQ Design
 
-Each band uses a Web Audio API `BiquadFilterNode` with parameters matched to a DJ rotary mixer:
+Each band uses a Web Audio API `BiquadFilterNode` with parameters matched to a DJ mixer:
 
 | Band | Filter Type  | Frequency | Q   | Range           |
 |------|-------------|-----------|-----|-----------------|
@@ -30,26 +31,27 @@ Each band uses a Web Audio API `BiquadFilterNode` with parameters matched to a D
 
 **Signal chain:**
 ```
-Audio Source → HIGH filter → MID filter → LOW filter → Analyser [→ Output]
+Tab Audio → HIGH filter → MID filter → LOW filter → Analyser → Speakers
 ```
 
-The analyser node feeds the spectrum canvas. In file mode the chain connects to the audio destination (speakers); in mic mode it does not, to prevent feedback.
-
-**Knob mapping:**
+**Slider mapping:**
 
 ```
-−150°  ────────────  0°  ────────────  +150°
- KILL            0 dB (unity)         +6 dB boost
+Top    ──── +6 dB (boost)
+Centre ────  0 dB (unity)
+Bottom ──── −40 dB (kill)
 ```
+
+The mapping is two-segment: the physical centre always corresponds to 0 dB regardless of the asymmetric dB range.
 
 ---
 
-## Knob Controls
+## Slider Controls
 
 | Interaction | Action |
 |---|---|
-| Drag up / down | Rotate knob (0.8° per pixel) |
-| Mouse wheel | Fine-trim the knob |
+| Drag up / down | Adjust gain continuously |
+| Mouse wheel | Fine-trim the band |
 | Double-click | Reset band to 0 dB |
 
 ---
@@ -69,23 +71,18 @@ This extension is not published to the Chrome Web Store. Install it locally as a
 
 4. Click **Load unpacked** and select the cloned directory
 
-5. The extension icon will appear in your toolbar — click it to open the popup
+5. Click the extension icon in your toolbar to open the side panel
 
 ---
 
 ## Usage
 
-### Audio File Mode
-1. Click **LOAD FILE** and select any audio file (MP3, WAV, OGG, FLAC, etc.)
-2. Click **PLAY** to start playback
-3. Adjust the HIGH, MID, and LOW knobs to shape the sound in real time
-4. The spectrum display updates live, color-coded by band
-
-### Microphone Mode
-1. Click **MIC** and allow microphone access when prompted
-2. The spectrum analyzer will display the incoming mic signal processed through the EQ
-3. Audio is not routed to speakers in this mode to prevent feedback
-4. Click **MIC** again to stop
+1. Open any tab playing audio (YouTube, Spotify web, etc.)
+2. Click the **Spectrometer EQ** icon to open the side panel
+3. Click **Start** — Chrome will prompt for tab capture permission
+4. The spectrum display activates; adjust **High**, **Mid**, and **Low** sliders to shape the sound in real time
+5. Switch between **Bars** and **Wave** modes using the segmented control at the top
+6. Click **Stop** to end capture
 
 ---
 
@@ -94,9 +91,10 @@ This extension is not published to the Chrome Web Store. Install it locally as a
 ```
 spectrometer-eq-chrome/
 ├── manifest.json   # Chrome Extension Manifest V3
-├── popup.html      # Extension popup UI
-├── styles.css      # Dark DJ mixer theme
-└── popup.js        # Web Audio API engine, EQ logic, knob interaction
+├── background.js   # Service worker — handles tab capture and side panel
+├── popup.html      # Side panel UI
+├── styles.css      # Minimal dark theme
+└── popup.js        # Web Audio API engine, EQ logic, slider interaction
 ```
 
 ---
@@ -105,12 +103,10 @@ spectrometer-eq-chrome/
 
 | Browser | Supported |
 |---------|-----------|
-| Chrome 88+ | Yes |
-| Edge 88+ (Chromium) | Yes |
-| Firefox | No (uses Chrome Extension APIs) |
+| Chrome 114+ | Yes (Side Panel API required) |
+| Edge 114+ (Chromium) | Yes |
+| Firefox | No |
 | Safari | No |
-
-Requires Web Audio API and `getUserMedia` support (both available in all modern Chromium-based browsers).
 
 ---
 
