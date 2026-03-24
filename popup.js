@@ -119,11 +119,11 @@ function drawVuFace() {
   const c = vuCtx;
 
   // ── Outer frame: dark anodized panel ───────────────────────────────────────
-  c.fillStyle = '#111111';
+  c.fillStyle = '#1e1c18';
   c.fillRect(0, 0, VW, VH);
 
   // Subtle inset panel border
-  c.strokeStyle = 'rgba(255,255,255,0.07)';
+  c.strokeStyle = 'rgba(255,255,255,0.1)';
   c.lineWidth   = 1;
   c.strokeRect(14, 5, VW - 28, VH - 12);
 
@@ -296,7 +296,7 @@ function initPeaks(count) {
 
 // ─── Spectrum: Draw Functions ─────────────────────────────────────────────────
 function drawIdle() {
-  ctx.fillStyle = '#111111';
+  ctx.fillStyle = '#1a1814';
   ctx.fillRect(0, 0, W, H);
   drawDbScale('bars');
 }
@@ -304,7 +304,7 @@ function drawIdle() {
 drawIdle();
 
 function drawBars(dataArray) {
-  ctx.fillStyle = '#111111';
+  ctx.fillStyle = '#1a1814';
   ctx.fillRect(0, 0, W, H);
 
   const mode     = modeSelect.value;
@@ -367,7 +367,7 @@ function render() {
   if (modeSelect.value === 'wave') {
     const td = new Uint8Array(analyser.fftSize);
     analyser.getByteTimeDomainData(td);
-    ctx.fillStyle = '#111111';
+    ctx.fillStyle = '#1a1814';
     ctx.fillRect(0, 0, W, H);
     // Zero-crossing reference line
     ctx.strokeStyle = 'rgba(255,255,255,0.07)';
